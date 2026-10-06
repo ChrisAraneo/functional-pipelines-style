@@ -14,8 +14,8 @@ ones here.
 
 ## 1. The single expression rule
 
-> **A function body is a single expression: one pipeline that composes small
-> named steps. A body contains no statement-level control flow.**0
+**A function body is a single expression: one pipeline that composes small
+named steps. A body contains no statement-level control flow.**
 
 NEVER write `if`, `else`, `switch`, `?:`, `for`, `while`, `for…of`, `forEach`,
 `try`, `catch`, `throw`, `let`, `var`, a reassignment, or a staircase of
