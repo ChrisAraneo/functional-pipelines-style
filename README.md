@@ -1,7 +1,6 @@
 # Functional Pipelines Style
 
-Functional Pipelines Style is a code style in which **every function
-body is a single expression that composes small steps**.
+***Every function body is a single expression that composes small steps***.
 
 Quick example to understand the main idea of this style:
 
