@@ -18,7 +18,7 @@ export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
 ## What's in this repository?
 
 - [`FUNCTIONAL_PIPELINES_STYLE.md`](FUNCTIONAL_PIPELINES_STYLE.md): the style guide itself, written primarily for AI agents.
-- [`refactor/prompts/`](refactor/prompts/): AI prompts for refactoring an
+- [`refactor/`](refactor/): AI prompts for refactoring an
   existing codebase into this style.
 
 ## Refactoring a codebase
@@ -45,7 +45,7 @@ the changes and commit them yourself.
 
 ### Auto
 
-Give [`00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/00_MASTER.md) to your best model. Use
+Give [`00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/00_MASTER.md) to your best model. Use
 the highest effort level. The tool you use must let the model start other
 agents (sub-agents).
 
@@ -72,11 +72,11 @@ read the final report. It lists the decisions the agent made.
 ### Manual
 
 1. **Plan.** Give
-   [`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/01_PLAN_ARCHITECT.md) to a strong
+   [`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/01_PLAN_ARCHITECT.md) to a strong
    model. Use a high effort level. The agent reads the style guide and your
    code. Then it writes a plan in `refactor-plan/`. It does not change your
    code.
-2. **Execute.** Give [`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/02_EXECUTOR.md) to
+2. **Execute.** Give [`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/02_EXECUTOR.md) to
    one agent at a time. Each agent does tasks from the plan and checks that
    they work. It writes its progress in `PROGRESS.md`. Do not run two agents
    at the same time: they share one working tree, and nothing is committed
@@ -84,12 +84,12 @@ read the final report. It lists the decisions the agent made.
 3. **Detail.** In a big codebase, the plan does not fully describe later
    tasks. These tasks are marked `needs-detailing`. First, finish the tasks
    that come before them. Then give
-   [`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/03_DETAILING_ARCHITECT.md)
+   [`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/03_DETAILING_ARCHITECT.md)
    to a strong model. Use a high effort level. The agent adds exact steps to
    these tasks, tests them with a dry run, and marks them as ready. Then go
    back to step 2. Repeat until no tasks need details.
 4. **Clean.** When all tasks are done, give
-   [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/04_CLEANER.md) to a model. A medium
+   [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md) to a model. A medium
    effort level is enough. The agent deletes the plan files in
    `refactor-plan/` and other notes made only for the refactor. It keeps all
    code, tests and config, and every document your codebase needs, like a
@@ -98,7 +98,9 @@ read the final report. It lists the decisions the agent made.
 
 ## Author
 
-This experimental code style is brought to you by Krzysztof Pająk (Chris Araneo) - chris.araneo@gmail.com
+This experimental code style is brought to you by:
+
+Krzysztof Pająk (Chris Araneo) - chris.araneo@gmail.com
 
 ## License
 

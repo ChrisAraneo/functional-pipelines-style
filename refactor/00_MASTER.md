@@ -24,7 +24,7 @@ and commits them after the run.
 | `{{SCOPE}}`           | Paths to refactor                                          | the whole repository                                                                                   |
 | `{{PLAN_DIR}}`        | Where the plan lives                                       | `refactor-plan/` at the repository root                                                                |
 | `{{NOTES}}`           | Priorities, frozen areas and constraints from the human    | none                                                                                                   |
-| `{{PROMPTS}}`         | Where the four session prompts are                         | `https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/` |
+| `{{PROMPTS}}`         | Where the four session prompts are                         | `https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/` |
 | `{{EXECUTOR_EFFORT}}` | Reasoning effort for executor sessions                     | `medium`                                                                                               |
 
 The repository is your current working directory. Your scratch folder is
@@ -35,10 +35,10 @@ never sees it.
 
 | Prompt                       | Role                                                      | Model and effort                         |
 | ---------------------------- | --------------------------------------------------------- | ---------------------------------------- |
-| [`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/01_PLAN_ARCHITECT.md) | Writes the plan once, at the start                        | the most capable model, high effort      |
-| [`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/02_EXECUTOR.md) | Carries out one task                                      | a capable model, `{{EXECUTOR_EFFORT}}`   |
-| [`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/03_DETAILING_ARCHITECT.md) | Details outlined tasks and re-details tasks that blocked  | the most capable model, high effort      |
-| [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/04_CLEANER.md) | Deletes the plan once every task is done                  | a capable model, medium effort           |
+| [`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/01_PLAN_ARCHITECT.md) | Writes the plan once, at the start                        | the most capable model, high effort      |
+| [`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/02_EXECUTOR.md) | Carries out one task                                      | a capable model, `{{EXECUTOR_EFFORT}}`   |
+| [`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/03_DETAILING_ARCHITECT.md) | Details outlined tasks and re-details tasks that blocked  | the most capable model, high effort      |
+| [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md) | Deletes the plan once every task is done                  | a capable model, medium effort           |
 
 You run at the highest effort available. Set the model and effort of every
 session as the table says. If your harness cannot set them, start the session
@@ -189,7 +189,7 @@ options, your answer and the rule from "Answering questions" that settled it.
 ### Phase 1: Plan
 
 1. Take snapshot S000 and start a planning architect session
-   ([`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/01_PLAN_ARCHITECT.md)) with `{{SCOPE}}`, `{{PLAN_DIR}}` and `{{NOTES}}`
+   ([`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/01_PLAN_ARCHITECT.md)) with `{{SCOPE}}`, `{{PLAN_DIR}}` and `{{NOTES}}`
    as its inputs.
 2. When it ends, check its work:
    - `{{PLAN_DIR}}/README.md`, `{{PLAN_DIR}}/PROGRESS.md` and at least one
@@ -238,7 +238,7 @@ status `blocked`. From then on, skip it and every task that depends on it.
 
 #### Running an executor
 
-1. Take a snapshot and start an executor session ([`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/02_EXECUTOR.md)) with
+1. Take a snapshot and start an executor session ([`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/02_EXECUTOR.md)) with
    `{{PLAN_DIR}}`, `{{TASK_ID}}` set to the task, `{{LANE}}` blank and
    `{{MAX_TASKS}}` set to `1`. On a second attempt, add the reason the first
    attempt failed verification.
@@ -289,7 +289,7 @@ kind of block it is:
 #### Running a detailing architect
 
 1. Take a snapshot and start a detailing architect session
-   ([`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/03_DETAILING_ARCHITECT.md)). Name the task in the start message, give the
+   ([`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/03_DETAILING_ARCHITECT.md)). Name the task in the start message, give the
    plan location `{{PLAN_DIR}}`, and add any re-detail context from "When a
    task blocks".
 2. If it ends with questions, answer them with "Answering questions", and
@@ -340,7 +340,7 @@ Run this phase only when every task in `PROGRESS.md` is `done`.
 1. Read what your final report needs from the plan before it disappears: the
    exclusions in `DECISIONS.md`, and the items tasks recorded for the human
    to confirm.
-2. Take a snapshot and start a cleaner session ([`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/prompts/04_CLEANER.md)) with
+2. Take a snapshot and start a cleaner session ([`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md)) with
    `{{PLAN_DIR}}`, and with `{{BASELINE_STATUS}}` set to the path of
    `status.txt` in snapshot S000.
 3. If it ends with questions, answer them with "Answering questions", and
