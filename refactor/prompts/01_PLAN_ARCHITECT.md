@@ -50,6 +50,24 @@ This has four consequences for you:
 - NEVER modify the repository's source, test or config files. You write only
   inside `{{PLAN_DIR}}`. You may run read-only commands and the project's
   existing install, build, lint, typecheck and test commands.
+- Committing is strictly forbidden, and so is changing branches. Never stage,
+  commit, amend, stash, reset, restore, revert, check out, switch, create,
+  rename or delete a branch, tag, merge, rebase, cherry-pick, fetch, pull or
+  push. Never add or remove a worktree, and never edit `.git/` or the git
+  config. Git is read-only for you: `status`, `log`, `diff`, `show`, `blame`,
+  `ls-files`, `rev-parse`, `branch --list` and similar. The files you write in
+  `{{PLAN_DIR}}` stay uncommitted on the current branch. Only the human
+  commits.
+- Uncommitted changes in the working tree are part of the code you plan
+  against. Read them with `git status` and `git diff`, and never discard,
+  stash or commit them.
+- Everything in `{{PLAN_DIR}}` is deleted once every task is done. Put nothing
+  there that the codebase needs afterwards. Helper modules, the audit
+  command, and the documents the guide requires (a glossary, a name index)
+  go outside `{{PLAN_DIR}}`, in files that tasks create.
+- The plan you write follows the same rules. No task tells anyone to stage,
+  commit or touch a branch. Every task leaves its changes uncommitted on the
+  current branch, on top of the uncommitted changes of the tasks before it.
 - The guide decides what the code should look like. Do not add rules, relax
   rules or "improve" on them. Where the guide is silent, say so and make an
   explicit decision in `DECISIONS.md`. Do not slip in your own preferences.
@@ -95,7 +113,8 @@ Work through the phases in order. Each one produces files in `{{PLAN_DIR}}`.
 Write `CONTEXT.md`. Find out the following and back each item with evidence:
 
 - The branch, the commit SHA the plan is based on (the **baseline commit**),
-  and whether the working tree is clean.
+  and whether the working tree is clean. If it is not, list the uncommitted
+  changes. The baseline is then that commit plus those changes.
 - Languages, frameworks, runtime, package manager, and the monorepo layout
   (packages or workspaces). Record the size as files and lines per top-level
   folder inside `{{SCOPE}}`.
@@ -188,7 +207,6 @@ Write `DECISIONS.md` in two sections.
    - exclusions: files that cannot comply, each with the reason, listed by path;
    - conflicts between the guide and the framework or tooling, and how each is
      resolved;
-   - the commit and branch strategy;
    - how executors treat tests that already fail at baseline;
    - any exception the guide permits only with evidence, such as a
      measurement. NEVER grant one without that evidence. Plan a task that
@@ -333,13 +351,14 @@ here. List them explicitly.
 - a check fails and fixing it needs an out-of-scope file or a behaviour change;
 - the steps conflict with the rules or with each other.
 
-If you stop, restore the in-scope files to how they were at the start, set the
-task to `blocked` in PROGRESS.md with a one-paragraph reason, and stop.
+If you stop, restore the in-scope files from your backup to how they were at
+the start, set the task to `blocked` in PROGRESS.md with a one-paragraph
+reason, and stop.
 
 ## Finish
 
-Set the task to `done` in PROGRESS.md, then commit the in-scope files and
-PROGRESS.md together with the message `refactor(<area>): <summary> [T042]`.
+Set the task to `done` in PROGRESS.md. Do not stage or commit anything: leave
+every change uncommitted on the current branch.
 ````
 
 Write `README.md` last. It explains what the plan is and the order to read its
@@ -349,12 +368,15 @@ every task:
 1. Read `README.md`, then the task, then the rules and recipes it references.
 2. Check that every task it depends on is `done`. If not, do not start.
 3. Confirm that "Current state" still matches the code.
-4. Do the steps.
-5. Run every acceptance check and read the output.
-6. Set the task to `done` in `PROGRESS.md`.
-7. Commit the in-scope files and `PROGRESS.md` together.
+4. Back up the in-scope files to a scratch folder outside the repository.
+5. Do the steps.
+6. Run every acceptance check and read the output.
+7. Set the task to `done` in `PROGRESS.md`.
+8. Leave every change uncommitted on the current branch.
 
-Executors NEVER edit plan files other than `PROGRESS.md`.
+Executors NEVER edit plan files other than `PROGRESS.md`. Nobody stages,
+commits or touches a branch. The working tree holds the uncommitted changes of
+every earlier task, and no executor discards them.
 
 ### Phase 8: Review your plan
 
