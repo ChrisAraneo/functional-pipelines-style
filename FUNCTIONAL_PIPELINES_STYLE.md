@@ -582,8 +582,14 @@ section names it.
 4. **One blank line between top-level statements.** The `P` destructuring
    (`const { nullish } = P;`) goes right after the imports.
 5. **No comments.** Names and tests explain the code. The only comments allowed
-   are tool directives, such as `// eslint-disable-next-line`, and the note on
-   each exception in section 15.
+   are tool directives, such as `// eslint-disable-next-line`, the note on each
+   exception in section 15, and the public JSDoc of rule 6.
+6. **Keep public JSDoc when refactoring.** When you refactor a codebase that
+   documents its public API with JSDoc — a `/** … */` block on an exported
+   function, type or constant — NEVER remove those comments. Callers read them
+   in their editors and documentation tools. Keep each one on the export it
+   documents. If the refactor changes the signature, for example by injecting
+   an effect as a new argument (section 7), update the comment to match.
 
 ## 12. Tests
 
@@ -665,7 +671,8 @@ section names it.
 order, one construct at a time. The result MUST behave exactly as the code did
 before: same outputs, same short-circuiting, same mutation or non-mutation.
 Change the style, not the logic — do not rename variables or restructure
-anything the refactor does not touch.
+anything the refactor does not touch. Keep every public JSDoc comment on the
+export it documents (section 11.6).
 
 1. **Name the steps.** Read the body top to bottom, find each distinct
    transformation and extract it into a small named `const` arrow, in its own
@@ -731,7 +738,8 @@ anything the refactor does not touch.
   named steps.
 - `Math.random`, `Date.now`, `process.env` or a second generator inside a
   computing function.
-- A comment that explains the code instead of a better name or a test.
+- A comment that explains the code instead of a better name or a test. Public
+  JSDoc is not such a comment and stays (section 11.6).
 
 ## 15. Measured exceptions
 
