@@ -60,8 +60,7 @@ true:
 
 - a task created it as an in-scope file: helper modules, tests, the audit
   command, configuration;
-- the style guide or `DECISIONS.md` requires the codebase to keep it, such as
-  a glossary or a name index;
+- the style guide or `DECISIONS.md` requires the codebase to keep it;
 - a file you keep refers to it: an import, a script in a package manifest, a
   CI step, a lint or compiler setting, or a link in a document.
 

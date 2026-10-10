@@ -63,8 +63,8 @@ This has four consequences for you:
   stash or commit them.
 - Everything in `{{PLAN_DIR}}` is deleted once every task is done. Put nothing
   there that the codebase needs afterwards. Helper modules, the audit
-  command, and the documents the guide requires (a glossary, a name index)
-  go outside `{{PLAN_DIR}}`, in files that tasks create.
+  command, and any documents the guide requires go outside `{{PLAN_DIR}}`, in
+  files that tasks create.
 - The plan you write follows the same rules. No task tells anyone to stage,
   commit or touch a branch. Every task leaves its changes uncommitted on the
   current branch, on top of the uncommitted changes of the tasks before it.
@@ -178,8 +178,8 @@ Reuse the guide's own examples and procedures wherever they fit.
 
 If the guide asks the adopting repository to fill in blanks, list each one in
 `DECISIONS.md` with a proposed value backed by the codebase. Blanks include
-things like a glossary, the location of constants, wrapper modules and the
-commands to run.
+things like the location of constants, wrapper modules and the commands to
+run.
 
 ### Phase 4: Audit the codebase
 
@@ -226,9 +226,8 @@ you a strong reason not to, and justify any deviation:
 
 1. **Foundations.** Add the dependencies and compiler or tooling settings the
    guide requires. Create the shared helper or wrapper modules it prescribes
-   and the documents it requires, such as a glossary or a name index. Switch
-   the lint rules on as **warnings**, so they report without blocking. Add one
-   command that re-runs the audit.
+   and any documents it requires. Switch the lint rules on as **warnings**, so
+   they report without blocking. Add one command that re-runs the audit.
 2. **Safety net.** Write characterisation tests for every module that will
    change and lacks adequate tests. They assert **current** behaviour,
    including edge cases and error paths, and they follow the guide's test

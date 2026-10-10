@@ -182,8 +182,9 @@ Make every choice the executor would otherwise face.
   public API preserved, or changed only as a design document says) and design
   so that the task keeps it. Never relax a standard to make a file pass,
   unless the plan records an exception for that exact case.
-- **Name things the project's way.** Use its naming rules, its glossary, and
-  its existing helpers. Reuse before you create.
+- **Name things the project's way.** Use its naming rules, the words its
+  code already uses (search for them), and its existing helpers. Reuse before
+  you create.
 - **Size.** Respect the plan's size limits. Default: at most 5 files and about
   300 changed lines per task. If a task would be bigger, split it with the
   plan's ID scheme (default: `T042a`, `T042b`, … in execution order). A part

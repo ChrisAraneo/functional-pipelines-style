@@ -7,7 +7,7 @@ guide.
 guide names the exception; section 15 is the only list of exceptions, and
 anything added to it carries a measurement.
 
-This guide is repo-agnostic. Section 16 lists the five blanks a repository fills
+This guide is repo-agnostic. Section 16 lists the four blanks a repository fills
 in before the guide is usable, and the lint rules that enforce it mechanically.
 A repository may add its own rules in a sibling document; it may not relax the
 ones here.
@@ -356,10 +356,11 @@ shape.
 7. **One pipeline per operation, not per variant.** Variants go through the same
    steps; branch on the variant inside the steps that differ, never in the entry
    point.
-8. **Name the standard steps the same way everywhere.** A repository fixes one
-   order for the recurring shape — `get…` the parameters, `find…` the
+8. **Name the standard steps the same way everywhere.** The recurring shape
+   always uses these verbs, in this order: `get…` the parameters, `find…` the
    candidates, `shuffle…`/`sort…` them, `pick…` the winners, `create…` the
-   edits, `apply…` them — and every pipeline follows it.
+   edits, `apply…` them. A pipeline skips the steps it does not need, but never
+   reorders or renames them.
 
 ## 7. Determinism and injected effects
 
@@ -402,14 +403,17 @@ shape.
 3. **Use words, not letters.** Callback parameters say what they hold:
    `(candidate) => candidate.column`, `(row, index) => …`. NEVER use
    one-letter names. Name a parameter you do not use `_`.
-4. **One word per concept, repository-wide.** Keep the domain glossary in a
-   table (section 16) and use exactly those words — never a synonym, never an
-   abbreviation, never `x`/`y` where the domain says `row`/`column`. Record
-   which way each counter counts (`pageNumber` from 1, `index` from 0) and
-   convert at the point of use: `RATES[pageNumber - 1]`.
-5. **Keep a function-name index** (for example `docs/FUNCTION_NAMES.md`) in
-   alphabetical order, ignoring case. Check it before you name a function and
-   reuse its words. Add every name you add and remove every name you delete.
+4. **One word per concept, repository-wide.** Before you name a value, search
+   the code for the word it already uses for that concept and use exactly that
+   word — never a synonym, never an abbreviation, never `x`/`y` where the code
+   says `row`/`column`. When the code uses two words for one concept, use the
+   more common one. A counter says in its name which way it counts: `…Index`
+   counts from 0, `…Number` from 1 (`pageIndex`, `pageNumber`). Convert at the
+   point of use: `RATES[pageNumber - 1]`.
+5. **Reuse the words of existing function names.** Before you name a function,
+   search the code for functions that do similar work and follow their verbs
+   and nouns: `findOrderCandidates` beside `findOrderItems`, not
+   `getOrderCandidates`.
 
 ## 9. Types
 
@@ -699,9 +703,7 @@ export it documents (section 11.6).
    import, `require('lodash')` and `_.`-prefixed call gone. Confirm no `_.`
    call remains.
 9. **Declare the return type** on every helper, including `| undefined`.
-10. **Update the function-name index** (section 8.5) with every name added or
-    removed.
-11. **Run the typecheck, the linter and the specs** for the package, and add the
+10. **Run the typecheck, the linter and the specs** for the package, and add the
     missing specs from section 12. A refactor is not done until all three pass.
 
 ## 14. Remove these on sight
@@ -763,17 +765,15 @@ add nothing to this list without them.
 
 ## 16. Adopting this guide in a new repository
 
-Fill in these five blanks, then the guide is complete for that repository:
+Fill in these four blanks, then the guide is complete for that repository:
 
 1. **The dependencies.** `lodash-es`, `ts-pattern` and `ramda` in
    `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
    named lodash imports do not type-check.
 2. **The `chain` wrapper module** (section 10.11) and its import path.
-3. **The domain glossary** (section 8.4): one table of the project's words, each
-   with its meaning, the type it names, and which way its counters count.
-4. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
+3. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
    per package.
-5. **The real commands** for formatting, linting, typechecking and testing,
+4. **The real commands** for formatting, linting, typechecking and testing,
    including any monorepo quirk that makes a root command lie (sections 9.6,
    11.1, 12.11).
 

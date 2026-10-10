@@ -92,9 +92,8 @@ read the final report. It lists the decisions the agent made.
    [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md) to a model. A medium
    effort level is enough. The agent deletes the plan files in
    `refactor-plan/` and other notes made only for the refactor. It keeps all
-   code, tests and config, and every document your codebase needs, like a
-   glossary. Its report keeps the useful parts of the plan, like the list of
-   excluded files.
+   code, tests and config, and every document your codebase needs. Its report
+   keeps the useful parts of the plan, like the list of excluded files.
 
 ## Author
 
