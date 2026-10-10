@@ -23,81 +23,53 @@ export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
 
 ## Refactoring a codebase
 
-The refactor has four steps:
+Give [`00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/00_MASTER.md)
+to your best model and run it in your repository. Use the highest effort
+level. The tool you use must let the model start other sub-agents.
 
-1. **Plan**: decide what to change.
-2. **Execute**: make the changes.
-3. **Detail**: add the missing details to the plan.
-4. **Clean**: delete the plan when all tasks are done.
+The prompt has placeholders, like `{{SCOPE}}` or `{{PLAN_DIR}}`. You can find
+them in its _Inputs_ table. If you leave a placeholder empty, the prompt uses
+the default value from that table.
 
-You can let one AI agent do all four steps for you. You can do each step
-yourself.
+### How it works
 
-The master, plan, execute and clean prompts have placeholders, like `{{SCOPE}}` or
-`{{PLAN_DIR}}`. You can find them in the _Inputs_ table of each prompt. If you leave a placeholder
-empty, the prompt uses the default value from that table. The detail prompt
-has no placeholders. It gets everything it needs from the plan.
+The master agent runs the whole refactor without you. It starts other agents,
+checks their work and decides what runs next:
 
-No agent ever commits or changes a branch. All changes, including the plan,
-stay uncommitted on your current branch. Agents can start from a working tree
-that already has uncommitted changes. When the refactor is done, you check
-the changes and commit them yourself.
-
-### Auto
-
-Give [`00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/00_MASTER.md) to your best model. Use
-the highest effort level. The tool you use must let the model start other
-agents (sub-agents).
-
-The master agent does the whole refactor for you:
-
-- It starts one agent to write the plan.
-- It starts one agent for each task. These agents can use a lower effort
-  level.
-- It starts a detail agent when a task needs more details, or when an agent
-  gets stuck.
-- When all tasks are done, it starts a clean agent that deletes the plan.
-  If some tasks could not be finished, it keeps the plan for you.
+1. **Plan.** It starts one agent that reads the style guide and your code and
+   writes a plan in `refactor-plan/`. The plan is a list of small tasks.
+2. **Execute.** It starts one agent for each task. These agents can use a
+   lower effort level. Each one does its task and checks that it works.
+3. **Detail.** When a task is only outlined, or an agent gets stuck, it starts
+   a detail agent that adds the exact steps to the task.
+4. **Clean.** When all tasks are done, it starts a clean agent that deletes
+   the plan. If some tasks could not be finished, it keeps the plan for you.
 
 When an agent asks a question, the master agent answers it. It always picks
 the safe choice: the code must work the same way, and the public API must not
 change.
 
 The master agent runs one agent at a time. Before each one, it saves a
-snapshot of the uncommitted changes outside the repository. It uses the
-snapshot to check what the agent changed, and to undo the agent's work if
-needed. When it is done, check the uncommitted changes and commit them. Also
-read the final report. It lists the decisions the agent made.
+snapshot of the uncommitted changes outside the repository, in
+`../refactor-scratch/`. It uses the snapshot to check what the agent changed,
+and to undo the agent's work if needed. A task that fails too many times is
+set aside, and the run goes on without it. If the run cannot go on safely, the
+master agent stops and tells you why. If the run is cut off, start the master
+prompt again: it reads its log and carries on where it stopped.
 
-### Manual
+No agent ever commits or changes a branch. All changes, including the plan,
+stay uncommitted on your current branch. You can start from a working tree
+that already has uncommitted changes.
 
-1. **Plan.** Give
-   [`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/01_PLAN_ARCHITECT.md) to a strong
-   model. Use a high effort level. The agent reads the style guide and your
-   code. Then it writes a plan in `refactor-plan/`. It does not change your
-   code.
-2. **Execute.** Give [`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/02_EXECUTOR.md) to
-   one agent at a time. Each agent does tasks from the plan and checks that
-   they work. It writes its progress in `PROGRESS.md`. Do not run two agents
-   at the same time: they share one working tree, and nothing is committed
-   between them.
-3. **Detail.** In a big codebase, the plan does not fully describe later
-   tasks. These tasks are marked `needs-detailing`. First, finish the tasks
-   that come before them. Then give
-   [`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/03_DETAILING_ARCHITECT.md)
-   to a strong model. Use a high effort level. The agent adds exact steps to
-   these tasks, tests them with a dry run, and marks them as ready. Then go
-   back to step 2. Repeat until no tasks need details.
-4. **Clean.** When all tasks are done, give
-   [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md) to a model. A medium
-   effort level is enough. The agent deletes the plan files in
-   `refactor-plan/` and other notes made only for the refactor. It keeps all
-   code, tests and config, and every document your codebase needs. Its report
-   keeps the useful parts of the plan, like the list of excluded files.
+### When it is done
+
+Read the final report first. It lists the decisions the master agent made for
+you, the tasks it set aside, and the code it left out. Then check the
+uncommitted changes and commit them yourself.
 
 ## Author
 
-This experimental code style is brought to you by:
+This experimental style is brought to you by:
 
 Krzysztof Pająk (Chris Araneo) - chris.araneo@gmail.com
 
