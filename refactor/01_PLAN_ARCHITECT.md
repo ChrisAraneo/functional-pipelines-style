@@ -62,9 +62,22 @@ This has four consequences for you:
   against. Read them with `git status` and `git diff`, and never discard,
   stash or commit them.
 - Everything in `{{PLAN_DIR}}` is deleted once every task is done. Put nothing
-  there that the codebase needs afterwards. Helper modules, the audit
-  command, and any documents the guide requires go outside `{{PLAN_DIR}}`, in
-  files that tasks create.
+  there that the codebase needs afterwards. Helper modules, tests, lint and
+  compiler settings, and any documents the guide requires go outside
+  `{{PLAN_DIR}}`, in files that tasks create.
+- **Refactoring tooling never enters the codebase.** Tooling is every script
+  that exists only to run or check the refactor: the audit and its detectors,
+  codemods, benchmark harnesses, report generators. You write all of it
+  yourself, in `{{PLAN_DIR}}/tools/`, and tasks run it by its path (for
+  example `node refactor-plan/tools/audit-style.mjs`). No task creates
+  tooling outside `{{PLAN_DIR}}`.
+- **Nothing outside `{{PLAN_DIR}}` points into it.** No task adds an import,
+  a package manifest script, a CI step, a git hook, a lint or compiler
+  setting, an ignore entry, a link, or a comment that names `{{PLAN_DIR}}`,
+  a file in it, or a plan ID (`R-012`, `C-04`, `T042`, a decision ID). When
+  the plan is deleted, such a reference would dangle or break the build. A
+  comment the guide requires (for example the note on a lint-disable
+  directive) states its reason in its own words.
 - The plan you write follows the same rules. No task tells anyone to stage,
   commit or touch a branch. Every task leaves its changes uncommitted on the
   current branch, on top of the uncommitted changes of the tasks before it.
@@ -196,6 +209,10 @@ order the tasks from this table.
 Count with tools, not by reading. Read every file you will write a judgement
 task for.
 
+Save the detectors as one audit command in `{{PLAN_DIR}}/tools/`, so that
+checkpoint tasks and acceptance criteria can re-run the audit by its path. It
+reads the code and prints its counts. It writes no files in the repository.
+
 ### Phase 5: Decide
 
 Write `DECISIONS.md` in two sections.
@@ -227,7 +244,9 @@ you a strong reason not to, and justify any deviation:
 1. **Foundations.** Add the dependencies and compiler or tooling settings the
    guide requires. Create the shared helper or wrapper modules it prescribes
    and any documents it requires. Switch the lint rules on as **warnings**, so
-   they report without blocking. Add one command that re-runs the audit.
+   they report without blocking. The audit command already exists in
+   `{{PLAN_DIR}}/tools/`. Do not add it, or a script that runs it, to the
+   codebase.
 2. **Safety net.** Write characterisation tests for every module that will
    change and lacks adequate tests. They assert **current** behaviour,
    including edge cases and error paths, and they follow the guide's test
@@ -373,8 +392,9 @@ every task:
 7. Set the task to `done` in `PROGRESS.md`.
 8. Leave every change uncommitted on the current branch.
 
-Executors NEVER edit plan files other than `PROGRESS.md`. Nobody stages,
-commits or touches a branch. The working tree holds the uncommitted changes of
+Executors NEVER edit plan files other than `PROGRESS.md`. They run the
+scripts in `tools/` by path, and never copy them, or a reference to the plan,
+into the codebase. Nobody stages, commits or touches a branch. The working tree holds the uncommitted changes of
 every earlier task, and no executor discards them.
 
 ### Phase 8: Review your plan
@@ -397,6 +417,13 @@ Open the files to check them; do not tick boxes from memory.
       you verified.
 - [ ] Every module rewritten in the Rewrite phase has tests by then, either
       existing ones or ones from the Safety net phase.
+- [ ] Every piece of refactoring tooling is in `{{PLAN_DIR}}/tools/`. No task
+      creates a script, report or note outside `{{PLAN_DIR}}` that only
+      serves the refactor.
+- [ ] No step or snippet in any task adds a reference to `{{PLAN_DIR}}`, a
+      file in it, or a plan ID to a file outside `{{PLAN_DIR}}`. Search the
+      task files for the folder name and for the ID patterns inside code
+      snippets, comments and manifest entries.
 - [ ] Read three tasks the way an executor would, using only `README.md`, the
       task and what it references. Include the hardest task. If you could not
       finish one without asking a question, fix it.

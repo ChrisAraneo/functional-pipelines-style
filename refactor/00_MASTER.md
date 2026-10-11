@@ -38,7 +38,7 @@ never sees it.
 | [`01_PLAN_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/01_PLAN_ARCHITECT.md) | Writes the plan once, at the start                        | the most capable model, high effort      |
 | [`02_EXECUTOR.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/02_EXECUTOR.md) | Carries out one task                                      | a capable model, `{{EXECUTOR_EFFORT}}`   |
 | [`03_DETAILING_ARCHITECT.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/03_DETAILING_ARCHITECT.md) | Details outlined tasks and re-details tasks that blocked  | the most capable model, high effort      |
-| [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md) | Deletes the plan once every task is done                  | a capable model, medium effort           |
+| [`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md) | Deletes the plan and the refactoring tooling once every task is done | a capable model, medium effort |
 
 You run at the highest effort available. Set the model and effort of every
 session as the table says. If your harness cannot set them, start the session
@@ -149,7 +149,8 @@ is not, a session wrote to git: halt.
 Then check that nothing changed since the snapshot. If something did, halt.
 
 Keep every snapshot back to the one taken right after the most recent
-checkpoint task became `done`. Delete older ones.
+checkpoint task became `done`. Delete older ones, except S000: it records the
+baseline, and the cleaner needs it. Keep S000 until Phase 4.
 
 ## The log
 
@@ -207,6 +208,12 @@ options, your answer and the rule from "Answering questions" that settled it.
 4. Check that no task in the plan stages, commits or touches a branch. If one
    does, send that back to the planning architect as a question you answered
    with rule 7.
+5. Check that the plan keeps refactoring material out of the codebase: every
+   script the plan uses to audit, transform or measure is inside
+   `{{PLAN_DIR}}/tools/`, and no task creates one outside `{{PLAN_DIR}}` or
+   adds the name of `{{PLAN_DIR}}` to a file outside it (search the task
+   files for the folder name). If one does, send it back to the planning
+   architect and tell it to follow its rules on refactoring tooling.
 
 ### Phase 2: The loop
 
@@ -251,6 +258,10 @@ status `blocked`. From then on, skip it and every task that depends on it.
      in the snapshot
      (`git diff --no-index -- <snapshot copy> {{PLAN_DIR}}/PROGRESS.md`), or
      with `git show HEAD:<path>` if the snapshot has no copy;
+   - no changed path outside `{{PLAN_DIR}}` contains the name of
+     `{{PLAN_DIR}}`, unless its snapshot copy (or its HEAD version, if the
+     snapshot has no copy) already did. The plan is deleted at the end, and a
+     reference to it would dangle;
    - the executor's backup folder `../refactor-scratch/<task ID>/` is gone.
      If it is not, delete it;
    - if the task is `done`: run every acceptance criterion in the task file
@@ -341,15 +352,24 @@ Run this phase only when every task in `PROGRESS.md` is `done`.
    exclusions in `DECISIONS.md`, and the items tasks recorded for the human
    to confirm.
 2. Take a snapshot and start a cleaner session ([`04_CLEANER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/04_CLEANER.md)) with
-   `{{PLAN_DIR}}`, and with `{{BASELINE_STATUS}}` set to the path of
-   `status.txt` in snapshot S000.
+   `{{PLAN_DIR}}`, with `{{BASELINE_STATUS}}` set to the absolute path of
+   `status.txt` in snapshot S000, and with `{{BASELINE_FILES}}` set to the
+   absolute path of `files/` in snapshot S000. Check that both exist first.
 3. If it ends with questions, answer them with "Answering questions", and
    send the answers back.
 4. When it ends, verify its work against the snapshot:
    - git state is unchanged;
-   - every changed path is a deletion. No file was modified or created;
-   - every deleted path is inside `{{PLAN_DIR}}`, or is a Markdown file that
-     git does not track and that S000 does not list;
+   - `{{PLAN_DIR}}` no longer exists;
+   - no file was created;
+   - every deleted path is inside `{{PLAN_DIR}}`, or is a file that git does
+     not track and that S000 does not list;
+   - every modified path existed in the snapshot, and its diff against the
+     snapshot copy (or `git show HEAD:<path>` if the snapshot has no copy)
+     only removes text that names `{{PLAN_DIR}}`, a deleted file or a plan
+     ID, plus the separator next to it;
+   - outside the paths the cleaner reported as dangling links, no file in the
+     working tree contains the name of `{{PLAN_DIR}}` unless it already did
+     in S000 or at HEAD (`git grep` and a search of untracked files);
    - every file the cleaner kept and reported is still there;
    - your scratch folder `../refactor-scratch/master/` is intact.
    If a check fails, restore the snapshot and start the session again. If it
@@ -377,9 +397,13 @@ it.
 2. **Never weaken tests.** Never approve deleting, skipping or weakening a test,
    or changing what a test expects.
 3. **Keep code.** Never approve deleting code, unless the guide demands it and
-   a search proves nothing uses it, including tests and dynamic imports. When
-   the cleaner is unsure whether a file is a refactoring artefact, keep the
-   file.
+   a search proves nothing uses it, including tests and dynamic imports.
+   Refactoring tooling is not code under this rule. The plan folder, and
+   every script, report or note the refactor created outside it that only
+   serves the refactor, are deleted when the cleaner runs. When the cleaner
+   asks about a file outside `{{PLAN_DIR}}`, approve deleting it if S000 does
+   not list it, git does not track it, and nothing the codebase keeps imports
+   or runs it. Otherwise keep it.
 4. **Dependencies.** Approve a new dependency only when the guide prescribes
    it, at the version the architect verified. Decline every other one.
 5. **Exceptions to the guide.** Grant one only with the evidence the guide
@@ -435,9 +459,10 @@ End the run with a short report:
 - **Outcome:** finished, finished with escalated tasks, or halted (and why).
 - **Where the changes are:** the branch, and that every change is uncommitted
   on it. Say how many files changed (`git status --porcelain -uall`).
-- **The plan:** deleted by the cleaner, with the list of refactoring files it
-  kept and why, or kept in `{{PLAN_DIR}}` and why (escalated tasks, or a
-  cleaner session that failed verification).
+- **The plan:** deleted by the cleaner, with the refactoring tooling and the
+  references it removed, and the list of refactoring files it kept and why;
+  or kept in `{{PLAN_DIR}}` and why (escalated tasks, or a cleaner session
+  that failed verification).
 - **Tasks:** how many are done and how many are escalated. List each escalated
   task with its reason and the tasks it holds up.
 - **Decisions you made for the human:** each question you answered, in one

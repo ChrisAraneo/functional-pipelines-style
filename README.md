@@ -43,7 +43,10 @@ checks their work and decides what runs next:
 3. **Detail.** When a task is only outlined, or an agent gets stuck, it starts
    a detail agent that adds the exact steps to the task.
 4. **Clean.** When all tasks are done, it starts a clean agent that deletes
-   the plan. If some tasks could not be finished, it keeps the plan for you.
+   the plan and everything that only served the refactor: the scripts in
+   `refactor-plan/tools/` (such as the style audit), any refactoring scripts,
+   reports or notes left in the codebase, and the references to them. If some
+   tasks could not be finished, it keeps the plan for you.
 
 When an agent asks a question, the master agent answers it. It always picks
 the safe choice: the code must work the same way, and the public API must not

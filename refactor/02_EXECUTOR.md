@@ -38,6 +38,7 @@ These files are in `{{PLAN_DIR}}`:
 | `DECISIONS.md`         | Decisions and exclusions                      | read the entries your task names        |
 | `PROGRESS.md`          | Status of every task                          | the only plan file you may edit         |
 | `GUIDE.md`             | Snapshot of the style guide                   | only the sections a rule cites          |
+| `tools/`               | Refactoring scripts, such as the audit        | run them as your task says, never edit  |
 | `AUDIT.md`, `ROADMAP.md` | The architect's working material            | do not read                             |
 
 **What wins when files disagree.** This prompt decides _how_ you work: safety,
@@ -59,6 +60,14 @@ contradicts `RULES.md`, `RECIPES.md` or itself, do not pick a side. Stop (see
   task says so.
 - NEVER change dependencies, lint config, compiler config, CI or scripts unless
   your task says so.
+- NEVER leave refactoring material in the codebase. The plan folder is deleted
+  when the refactor ends. Do not create a script, report or note that only
+  serves the refactor (an audit, a codemod, a benchmark, a summary of your
+  work), and do not copy a file from the plan into the repository. Do not add
+  a reference to the plan to any file outside it: no import, package
+  manifest script, CI step, config entry, link, or comment that names the
+  plan folder, a file in it, or a plan ID (`R-012`, `C-04`, `T042`). If your
+  task tells you to, stop (see "Stopping").
 - NEVER invent an API. Use only the imports and calls shown in your task, its
   recipes, or code that already exists in the repository. If you need anything
   else, read the library's type definitions in the installed version. If you

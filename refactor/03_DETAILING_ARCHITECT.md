@@ -485,6 +485,16 @@ options and your recommendation.
 - You never change, stage or discard uncommitted changes outside the plan
   files of your own task.
 - You never push, open a pull request, or create, switch or delete a branch.
+- **The plan folder is deleted when the plan is done**, so nothing the
+  codebase keeps may depend on it. Scripts that only serve the plan (audits,
+  detectors, codemods, benchmark harnesses, report generators) live inside
+  the plan folder, in the plan's tools folder (default: `tools/`), and tasks
+  run them by path. You write them there yourself. No task you write creates
+  such a script, a report or a note outside the plan folder, or adds a
+  reference to the plan to a file outside it: an import, a package manifest
+  script, a CI step, a config or ignore entry, a link, or a comment that
+  names the plan folder, a file in it, or a plan ID (rule, recipe, task or
+  decision IDs).
 
 ## Checklist before you hand over
 
@@ -501,6 +511,9 @@ options and your recommendation.
 - [ ] The restore commands copy every in-scope file back from the executor's
       backup and delete every new file. None of them uses git.
 - [ ] No step in the task stages, commits or touches a branch.
+- [ ] No step or snippet creates plan-only tooling outside the plan folder or
+      adds a reference to the plan (its folder, a file in it, a plan ID) to a
+      file outside it.
 - [ ] Compared with `status-before.txt`, `git status --porcelain -uall` has
       new or changed lines only for plan files, and your scratch folder is
       deleted.
