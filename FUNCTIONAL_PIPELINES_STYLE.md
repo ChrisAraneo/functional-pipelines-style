@@ -71,16 +71,21 @@ table is the checklist for a refactor.
    checkout/
    ├── create-order.ts                entry point, the only file callers import
    ├── create-order.spec.ts
+   ├── types/
+   │   └── order.ts                   what create-order returns
    └── internal/                      private to checkout/
        ├── filter-eligible-items.ts
        ├── filter-eligible-items.spec.ts
-       └── …
+       ├── …
+       └── types/                     types of the functions in internal/
+           ├── eligible-items.ts
+           └── …
    catalog/
    ├── get-categories.ts              a folder may have several entry points
    ├── filter-featured-products.ts
    ├── slice-for-page.ts
    ├── internal/
-   └── types/                         types that callers outside catalog/ use
+   └── types/                         types of the entry points; callers use them
        ├── category.ts
        └── product-group.ts
    ```
@@ -88,9 +93,13 @@ table is the checklist for a refactor.
 5. **Files at the root of a feature folder are its entry points.** Code outside
    the folder imports only those. NEVER import from another folder's
    `internal/`.
-6. **Types get their own file.** A type used only inside a feature goes in
-   `internal/<name>.ts`. A type that callers use goes in `types/<name>.ts`.
-   NEVER declare a type in a file that holds a function.
+6. **Types get their own file, in the `types/` folder next to the functions
+   that use them.** The types of the entry points go in `types/<name>.ts`; the
+   types of the functions in `internal/` go in `internal/types/<name>.ts`. A
+   type shared by functions in several folders goes in the `types/` folder of
+   the first parent folder they have in common: a type that `checkout/` and
+   `catalog/` both use goes in their parent's `types/`, never in either
+   feature's own. NEVER declare a type in a file that holds a function.
 7. **Shared helpers move up a level.** A helper that two features need in the
    same form lives in their parent folder. If each feature needs a slightly
    different version, each keeps its own copy in its `internal/`. NEVER add a
@@ -138,7 +147,11 @@ table is the checklist for a refactor.
    the composition of existing ones:
 
    ```ts
-   export const formatName = flow(trim, toLower, capitalize);
+   export const formatName: (name: string) => string = flow(
+     trim,
+     toLower,
+     capitalize,
+   );
    ```
 
    They nest: a `.thru()` step may be a `flow(…)`, and a `flow` step may be a
@@ -162,10 +175,51 @@ table is the checklist for a refactor.
     literals: `isSurface(grid, row, column)`, `{ row, column, value }`.
 11. **Entry points and helpers take plain arguments. Pipeline steps take one
     object** (section 6).
-12. **Return types.** Helpers MUST declare their return type, including
-    `| undefined` variants. Pipeline steps and entry points MUST NOT, because
-    their types are inferred and the next step reads them through
-    `ReturnType<typeof …>`.
+12. **Return types.** EVERY function in its own file — entry point, pipeline
+    step and helper alike — MUST declare its return type, including
+    `| undefined` variants. NEVER leave it to inference.
+    - **An object is returned as a named interface.** Declare it in the
+      `types/` folder next to the function (section 2.6), one interface per
+      file, and import it with `import type`. NEVER write the object shape
+      inline in the signature.
+    - **Name the interface after the value it describes**, with the feature's
+      name in front, like the steps (section 8.2): `sliceBeartrapCells`
+      returns a `BeartrapSlice`, `createBeartrapPatches` a `BeartrapPatch`.
+    - **Functions may share an interface only when it makes sense in the
+      domain**: when they return the same thing, not merely the same shape.
+      When they live in different folders, the shared interface goes in the
+      `types/` folder of the first parent folder they have in common
+      (section 2.6).
+    - **Anything else declares its type as it is**: `number`, `Tile[][]`,
+      `Layout`, `User | undefined`.
+
+    A step, `create-beartrap-patches.ts`:
+
+    ```ts
+    import { TILE_AIR } from '@mander/model';
+    import { map } from 'lodash-es';
+    import type { BeartrapPatch } from './types/beartrap-patch';
+    import type { BeartrapSlice } from './types/beartrap-slice';
+
+    export const createBeartrapPatches = ({
+      tiles,
+      cells,
+    }: BeartrapSlice): BeartrapPatch => ({
+      tiles,
+      patches: map(cells, ({ row, column }) => ({ row, column, tile: TILE_AIR })),
+    });
+    ```
+
+    Its return type, `types/beartrap-patch.ts`:
+
+    ```ts
+    import type { TILE_AIR } from '@mander/model';
+
+    export interface BeartrapPatch {
+      tiles: number[][];
+      patches: { row: number; column: number; tile: typeof TILE_AIR }[];
+    }
+    ```
 
     A helper:
 
@@ -174,18 +228,6 @@ table is the checklist for a refactor.
       categories: Category[],
       index: number,
     ): number => countOccurrences(take(categories, index), categories[index]);
-    ```
-
-    A step:
-
-    ```ts
-    export const getTopCandidate = ({
-      grid,
-      candidates,
-    }: ReturnType<typeof sortCandidates>) => ({
-      grid,
-      candidate: head(candidates),
-    });
     ```
 
 ## 4. Branching
@@ -319,7 +361,10 @@ shape.
    runs the steps with `flow` from `lodash-es`. It does nothing else.
 
    ```ts
-   export const removeExpiredRecords = (records: Record[], now: number) =>
+   export const removeExpiredRecords = (
+     records: Record[],
+     now: number,
+   ): Record[] =>
      flow(
        computeExpiryWindow,
        filterExpiredRecords,
@@ -332,18 +377,20 @@ shape.
 
 2. **One step per file**, in `internal/`. A step takes one object, destructures
    it in its parameter list and returns a new object.
-3. **Step input types.** The first step writes its input type inline. Every
-   later step uses the return type of the step before it, imported with
+3. **Step types.** The first step writes its input type inline. Every step
+   returns a named interface from `internal/types/` (section 3.12), and every
+   later step takes the interface the step before it returns, imported with
    `import type`:
 
    ```ts
    import { head } from 'lodash-es';
-   import type { sortCandidates } from './sort-candidates';
+   import type { RecordCandidates } from './types/record-candidates';
+   import type { TopRecordCandidate } from './types/top-record-candidate';
 
-   export const getTopCandidate = ({
+   export const getTopRecordCandidate = ({
      records,
      candidates,
-   }: ReturnType<typeof sortCandidates>) => ({
+   }: RecordCandidates): TopRecordCandidate => ({
      records,
      candidate: head(candidates),
    });
@@ -380,7 +427,7 @@ shape.
    explicit seed, so the same seed MUST always give the same output:
 
    ```ts
-   export const createWorld = (name: string) =>
+   export const createWorld = (name: string): World =>
      chain(createRandom(name)).thru(createTerrain).value();
    ```
 
@@ -519,9 +566,11 @@ The verb table. The order of the rows is the order of the walk in rule 8.6.
 2. **String unions for fixed sets of values.** NEVER use `enum`.
 3. **NEVER use** `any`, non-null assertions (`!`), `@ts-ignore`,
    `@ts-expect-error` or `as` casts in source files.
-4. **Reuse types instead of writing them out again:** `ReturnType<typeof step>`
-   for step inputs, `ReturnType<typeof createRandom>` for an injected generator,
-   `Parameters<typeof fn>` for a wrapper.
+4. **Reuse types instead of writing them out again:** the interface the
+   previous step returns for a step's input (section 6.3), the type
+   `createRandom` returns for an injected generator, `Parameters<typeof fn>`
+   for a wrapper. NEVER use `ReturnType<typeof …>` where the function already
+   declares a named return type (section 3.12).
 5. **Import types as types:** `import type { Item } from './types/item';`, or
    `import { type Item, EMPTY_ITEM } from './types/item';` when one line brings
    in both. Turn on `verbatimModuleSyntax` so the compiler checks it.
@@ -790,7 +839,11 @@ export it documents (section 11.6).
    the helpers now used; `chain` from the local wrapper; every `'lodash'`
    import, `require('lodash')` and `_.`-prefixed call gone. Confirm no `_.`
    call remains.
-9. **Declare the return type** on every helper, including `| undefined`.
+9. **Declare the return type** on every function in its own file — entry
+   points, steps and helpers — including `| undefined`. Move every returned
+   object shape into a named interface in the `types/` folder next to the
+   function (section 3.12), and type each step's input with the interface the
+   step before it returns.
 10. **Run the typecheck, the linter and the specs** for the package, and add the
     missing specs from section 12. A refactor is not done until all three pass.
 
@@ -826,6 +879,9 @@ export it documents (section 11.6).
   outermost handler.
 - An exported function that does real logic itself instead of only composing
   named steps.
+- A function in its own file without a declared return type, or one that
+  returns an object typed inline or through `ReturnType<typeof …>` instead of
+  a named interface in the `types/` folder next to it.
 - `Math.random`, `Date.now`, `process.env` or a second generator inside a
   computing function.
 - A function name that does not start with a verb from the verb table, that
@@ -918,6 +974,7 @@ wrapper module itself from the namespace-import rule — it is the one file that
 needs `import * as lodashModule`.
 
 Add to that: `prefer-const`, `no-param-reassign`,
+`@typescript-eslint/explicit-module-boundary-types`,
 `@typescript-eslint/no-explicit-any`,
 `@typescript-eslint/no-non-null-assertion`, and
 `@typescript-eslint/consistent-type-imports`.
