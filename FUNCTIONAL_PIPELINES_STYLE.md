@@ -8,7 +8,7 @@ guide names the exception; section 15 is the only list of exceptions, and
 anything added to it carries a measurement.
 
 This guide is repo-agnostic. Section 16 lists the four blanks a repository fills
-in before the guide is usable, and the lint rules that enforce it mechanically.
+in before the guide is usable.
 A repository may add its own rules in a sibling document; it may not relax the
 ones here.
 
@@ -710,19 +710,16 @@ section names it.
 
 ## 11. Layout and comments
 
-1. **Prettier decides the formatting.** Keep its defaults close to: single
-   quotes, semicolons, trailing commas, two-space indents, 80 columns. Never
-   hand-format.
-2. **Import order:** package imports first, then relative imports. Sort each
+1. **Import order:** package imports first, then relative imports. Sort each
    group by path.
-3. **Source files have no blank line between the two import groups. Spec files
+2. **Source files have no blank line between the two import groups. Spec files
    have exactly one.**
-4. **One blank line between top-level statements.** The `P` destructuring
+3. **One blank line between top-level statements.** The `P` destructuring
    (`const { nullish } = P;`) goes right after the imports.
-5. **No comments.** Names and tests explain the code. The only comments allowed
-   are tool directives, such as `// eslint-disable-next-line`, the note on each
-   exception in section 15, and the public JSDoc of rule 6.
-6. **Keep public JSDoc when refactoring.** When you refactor a codebase that
+4. **No comments.** Names and tests explain the code. The only comments allowed
+   are tool directives, the note on each exception in section 15, and the
+   public JSDoc of rule 5.
+5. **Keep public JSDoc when refactoring.** When you refactor a codebase that
    documents its public API with JSDoc — a `/** … */` block on an exported
    function, type or constant — NEVER remove those comments. Callers read them
    in their editors and documentation tools. Keep each one on the export it
@@ -810,7 +807,7 @@ order, one construct at a time. The result MUST behave exactly as the code did
 before: same outputs, same short-circuiting, same mutation or non-mutation.
 Change the style, not the logic — do not rename variables or restructure
 anything the refactor does not touch. Keep every public JSDoc comment on the
-export it documents (section 11.6).
+export it documents (section 11.5).
 
 1. **Name the steps.** Read the body top to bottom, find each distinct
    transformation and extract it into a small named `const` arrow, in its own
@@ -888,7 +885,7 @@ export it documents (section 11.6).
   starts with a word from its **Synonyms** column, or whose verb is not the
   first one the walk in section 8.6 reaches.
 - A comment that explains the code instead of a better name or a test. Public
-  JSDoc is not such a comment and stays (section 11.6).
+  JSDoc is not such a comment and stays (section 11.5).
 
 ## 15. Measured exceptions
 
@@ -920,65 +917,5 @@ Fill in these four blanks, then the guide is complete for that repository:
 2. **The `chain` wrapper module** (section 10.11) and its import path.
 3. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
    per package.
-4. **The real commands** for formatting, linting, typechecking and testing,
-   including any monorepo quirk that makes a root command lie (sections 9.6,
-   11.1, 12.11).
-
-Enforce what a linter can. These `no-restricted-syntax` selectors are verified
-to fire on the constructs they name, under ESLint flat config:
-
-```js
-'no-restricted-syntax': [
-  'error',
-  { selector: 'IfStatement', message: 'Use match() from ts-pattern.' },
-  { selector: 'SwitchStatement', message: 'Use match() from ts-pattern.' },
-  { selector: 'ConditionalExpression', message: 'Use match() from ts-pattern.' },
-  { selector: 'ForStatement', message: 'Use map/filter/reduce.' },
-  { selector: 'ForOfStatement', message: 'Use map/filter/reduce.' },
-  { selector: 'ForInStatement', message: 'Use map/filter/reduce.' },
-  { selector: 'WhileStatement', message: 'Use map/filter/reduce.' },
-  { selector: 'DoWhileStatement', message: 'Use map/filter/reduce.' },
-  { selector: 'TryStatement', message: 'Use tryCatch from ramda.' },
-  { selector: 'ThrowStatement', message: 'Return a fallback value instead.' },
-  { selector: 'VariableDeclaration[kind="let"]', message: 'Thread the value.' },
-  { selector: 'VariableDeclaration[kind="var"]', message: 'Thread the value.' },
-  { selector: 'FunctionDeclaration', message: 'Use an arrow const.' },
-  { selector: 'ClassDeclaration', message: 'Use functions.' },
-  { selector: 'TSEnumDeclaration', message: 'Use a string union.' },
-  {
-    selector: "CallExpression[callee.property.name='forEach']",
-    message: 'Use map/filter/reduce.',
-  },
-  { selector: "CallExpression[callee.name='forEach']", message: 'Use map/filter/reduce.' },
-  { selector: "ImportDeclaration[source.value='lodash']", message: 'Use lodash-es.' },
-  {
-    selector: "ImportDeclaration[source.value=/^lodash/] ImportDefaultSpecifier",
-    message: 'Use named imports.',
-  },
-  {
-    selector: "ImportDeclaration[source.value=/^lodash/] ImportNamespaceSpecifier",
-    message: 'Use named imports (the chain wrapper is the one exception).',
-  },
-  { selector: "MemberExpression[object.name='_']", message: 'No _ namespace.' },
-  {
-    selector:
-      "ImportDeclaration[source.value='lodash-es'] ImportSpecifier[imported.name='chain']",
-    message: 'Import chain from the local wrapper.',
-  },
-],
-```
-
-The `_` rule targets `_.` calls through `MemberExpression`, not the identifier,
-so naming an unused parameter `_` (section 8.3) stays clean. Exempt the `chain`
-wrapper module itself from the namespace-import rule — it is the one file that
-needs `import * as lodashModule`.
-
-Add to that: `prefer-const`, `no-param-reassign`,
-`@typescript-eslint/explicit-module-boundary-types`,
-`@typescript-eslint/no-explicit-any`,
-`@typescript-eslint/no-non-null-assertion`, and
-`@typescript-eslint/consistent-type-imports`.
-
-In an existing codebase these rules light up everywhere at once. Turn them on as
-warnings, fix per folder, and only then raise them to errors — and never relax a
-rule to make a file pass. Bring the file in line instead.
+4. **The real commands** for linting, typechecking and testing, including any
+   monorepo quirk that makes a root command lie (sections 9.6, 12.11).
