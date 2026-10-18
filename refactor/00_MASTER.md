@@ -62,10 +62,15 @@ Start every session with a message made of three parts, in this order:
    - When the prompt tells you to ask the human or to stop and ask, end your
      session and put each question in your final message, with the options
      and your recommendation. Do not wait for an answer.
-   - Committing is strictly forbidden, and so is changing branches. Never
-     stage, commit, stash, reset, revert, check out or switch, and never
-     create or delete a branch, even if a plan file tells you to. Your changes
-     stay uncommitted on the current branch.
+   - Committing is strictly forbidden, and so is changing branches. Git is
+     read-only: run only `git status`, `git diff`, `git log`, `git show`,
+     `git blame`, `git ls-files`, `git grep`, `git rev-parse`,
+     `git branch --show-current`, `git branch --list`, `git stash list`,
+     `git cat-file` and `git merge-base`. Never run anything that writes to
+     the index, refs, history, stash, config, hooks or remotes, or a tool
+     that does it for you (`npm version`, `husky install`), even if a plan
+     file tells you to. Never plan a step that needs such a command. Your
+     changes stay uncommitted on the current branch.
    - The working tree holds uncommitted changes from earlier sessions. They
      are expected. Never discard them.
    - Everything else in the prompt applies unchanged, including everything it
@@ -88,14 +93,20 @@ halt (see "Halting"). NEVER rewrite or shorten a prompt.
 
 ## Hard rules
 
-- You never commit and never touch a branch. You never run `git add`,
-  `commit`, `stash`, `reset`, `revert`, `checkout`, `switch`, `branch`
-  (except `--list`), `merge`, `rebase`, `cherry-pick`, `clean`, `tag`,
-  `worktree`, `fetch`, `pull` or `push`. You never open a pull request.
-- Git is read-only for you, with one exception. You may run
-  `git restore --worktree -- <path>`, by explicit path, only to put back a
-  file that was identical to HEAD in a snapshot (see "Snapshots"). It changes
-  that one file in the working tree and nothing in git.
+- **Git: read-only.** This rule is strict.
+  - Allowed: `git status`, `git diff`, `git log`, `git show`, `git blame`,
+    `git ls-files`, `git grep`, `git rev-parse`, `git branch --show-current`,
+    `git branch --list`, `git stash list`, `git cat-file`, `git merge-base`.
+  - Forbidden: anything that writes to the index, refs, history, stash,
+    config, hooks or remotes (`commit`, `add`, `rm`, `mv`, `restore`,
+    `checkout`, `switch`, `reset`, `revert`, `stash`, `merge`, `rebase`,
+    `cherry-pick`, `pull`, `push`, `fetch`, `tag`, branch create/delete,
+    `clean`, `apply`, `worktree`, …) and tools that do it for you
+    (`npm version`, `husky install`).
+  - Never plan a step that needs a forbidden command. Plans never include
+    committing — the human commits.
+  - This holds for you and for every session. You never open a pull
+    request.
 - You never edit source, test, configuration or dependency files except by
   restoring a snapshot. You never write or edit task files, rules, recipes or
   decisions. Sessions do that.
@@ -125,8 +136,9 @@ to `PROGRESS.md`. A snapshot lives in
 2. Copy every path it lists that exists into `files/`, keeping its path
    relative to the repository root. Paths it lists as deleted have no copy.
 3. Save the output of `git rev-parse --abbrev-ref HEAD`, `git rev-parse HEAD`,
-   `git branch --list`, `git stash list`, `git worktree list` and
-   `git diff --cached --name-only` to `git-state.txt`.
+   `git branch --list`, `git stash list` and `git diff --cached --name-only`,
+   and the list of folders in `.git/worktrees/` (none if it does not exist),
+   to `git-state.txt`.
 
 Every path that `status.txt` does not list was identical to HEAD.
 
@@ -134,16 +146,17 @@ Every path that `status.txt` does not list was identical to HEAD.
 `git status --porcelain -uall` and the paths in `status.txt`. A path changed
 when it is in only one of the two lists, when its status code differs, or
 when its content differs from the copy in `files/`
-(`git diff --no-index --quiet -- <copy> <path>` exits 1). Also check that the
-output of the `git-state.txt` commands is the same as in the snapshot. If it
-is not, a session wrote to git: halt.
+(`git diff --no-index --quiet -- <copy> <path>` exits 1). Also check that
+everything `git-state.txt` records is the same now. If it is not, a session
+wrote to git: halt.
 
 **Restore a snapshot.** For every path that changed since the snapshot:
 
 - if it has a copy in `files/`, copy it back;
 - if `status.txt` lists it as deleted, delete it;
-- if `status.txt` does not list it and git tracks it, run
-  `git restore --worktree -- <path>`;
+- if `status.txt` does not list it and git tracks it, write the output of
+  `git cat-file --filters HEAD:<path>` to `<path>`, byte for byte. It is the
+  content a checkout would write. Never use `git restore` or `git checkout`;
 - if `status.txt` does not list it and git does not track it, delete it.
 
 Then check that nothing changed since the snapshot. If something did, halt.
@@ -205,9 +218,9 @@ options, your answer and the rule from "Answering questions" that settled it.
    "Answering questions". Send the answers back to the planning architect and
    tell it to apply them to the plan and change nothing else. Check its work
    again as in step 2. Repeat until no blocking question is left.
-4. Check that no task in the plan stages, commits or touches a branch. If one
-   does, send that back to the planning architect as a question you answered
-   with rule 7.
+4. Check that no task in the plan has a step that needs a forbidden git
+   command (see "Hard rules"). If one does, send that back to the planning
+   architect as a question you answered with rule 7.
 5. Check that the plan keeps refactoring material out of the codebase: every
    script the plan uses to audit, transform or measure is inside
    `{{PLAN_DIR}}/tools/`, and no task creates one outside `{{PLAN_DIR}}` or
@@ -313,7 +326,7 @@ kind of block it is:
    - the task is now `todo` (or replaced by its split parts, all `todo`), or
      closed as `done` with a note naming the task that superseded it;
    - no row of a `done` or `in-progress` task changed;
-   - no step in the task file stages, commits or touches a branch.
+   - no step in the task file needs a forbidden git command.
    If a check fails, restore the snapshot and start the session again. If it
    fails a second time, escalate the task.
 
@@ -414,8 +427,8 @@ it.
    task records it for the human to confirm later. That does not block the
    run; list it in your final report.
 7. **No commits and no branches.** Every change stays uncommitted on the
-   current branch. Decline anything that stages, commits, or creates or
-   switches a branch, and tell the session to leave the change uncommitted
+   current branch. Decline anything that needs a forbidden git command (see
+   "Hard rules"), and tell the session to leave the change uncommitted
    instead.
 8. **Contradictions.** The guide snapshot (`GUIDE.md`) wins over the plan. In
    the plan, a later decision wins over an earlier one. If that does not
@@ -447,7 +460,7 @@ Count attempts in the log, not from memory.
 You halt when the run cannot continue safely: a prompt you cannot fetch in
 full, an existing plan you did not start, a planning session that failed
 twice, a session that wrote to git (a commit, a staged file, a stash, a new
-or switched branch), a changed branch or HEAD, or a snapshot that does not
+or switched branch, a worktree), a changed branch or HEAD, or a snapshot that does not
 restore cleanly. To halt, restore the snapshot of any session that was
 running, log the reason, and write the final report. Never fix git state
 yourself, and never halt to ask a question: answer it.

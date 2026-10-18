@@ -81,12 +81,20 @@ contradicts `RULES.md`, `RECIPES.md` or itself, do not pick a side. Stop (see
   column of `PROGRESS.md` instead.
 - NEVER say a check passed unless you ran it in this session and read its
   output.
-- NEVER commit, and NEVER change a branch. Committing is strictly forbidden.
-  Never stage, commit, amend, stash, reset, restore, revert, check out,
-  switch, create, rename or delete a branch, tag, merge, rebase, cherry-pick,
-  clean, fetch, pull or push. Never add or remove a worktree. Git is read-only
-  for you: `status`, `diff`, `log`, `show`. Your changes stay uncommitted on
-  the current branch. Only the human commits.
+- **Git: read-only.** This rule is strict.
+  - Allowed: `git status`, `git diff`, `git log`, `git show`, `git blame`,
+    `git ls-files`, `git grep`, `git rev-parse`, `git branch --show-current`,
+    `git branch --list`, `git stash list`, `git cat-file`, `git merge-base`.
+  - Forbidden: anything that writes to the index, refs, history, stash,
+    config, hooks or remotes (`commit`, `add`, `rm`, `mv`, `restore`,
+    `checkout`, `switch`, `reset`, `revert`, `stash`, `merge`, `rebase`,
+    `cherry-pick`, `pull`, `push`, `fetch`, `tag`, branch create/delete,
+    `clean`, `apply`, `worktree`, …) and tools that do it for you
+    (`npm version`, `husky install`).
+  - Never plan a step that needs a forbidden command. Plans never include
+    committing — the human commits.
+  - If your task has a step that needs a forbidden command, skip that
+    step. Your changes stay uncommitted on the current branch.
 - NEVER change or discard uncommitted changes you did not make. The working
   tree holds the uncommitted work of earlier tasks, and your in-scope files
   may already contain some of it. That work is the starting point of your

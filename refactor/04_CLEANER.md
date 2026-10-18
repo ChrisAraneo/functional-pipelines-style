@@ -31,12 +31,19 @@ working tree was created by the refactor.
 
 ## Hard rules
 
-- Committing is strictly forbidden, and so is changing branches. Never stage,
-  commit, amend, stash, reset, restore, revert, check out, switch, create,
-  rename or delete a branch, tag, merge, rebase, cherry-pick, clean, fetch,
-  pull or push. Never add or remove a worktree. Git is read-only for you:
-  `status`, `diff`, `log`, `show`, `ls-files`, `rev-parse`. Your changes stay
-  uncommitted on the current branch. Only the human commits.
+- **Git: read-only.** This rule is strict.
+  - Allowed: `git status`, `git diff`, `git log`, `git show`, `git blame`,
+    `git ls-files`, `git grep`, `git rev-parse`, `git branch --show-current`,
+    `git branch --list`, `git stash list`, `git cat-file`, `git merge-base`.
+  - Forbidden: anything that writes to the index, refs, history, stash,
+    config, hooks or remotes (`commit`, `add`, `rm`, `mv`, `restore`,
+    `checkout`, `switch`, `reset`, `revert`, `stash`, `merge`, `rebase`,
+    `cherry-pick`, `pull`, `push`, `fetch`, `tag`, branch create/delete,
+    `clean`, `apply`, `worktree`, …) and tools that do it for you
+    (`npm version`, `husky install`).
+  - Never plan a step that needs a forbidden command. Plans never include
+    committing — the human commits.
+  - Your changes stay uncommitted on the current branch.
 - Delete with the file system (`rm`, `Remove-Item`), never with `git rm`:
   `git rm` stages the deletion.
 - NEVER delete a file that existed before the refactor. That includes files

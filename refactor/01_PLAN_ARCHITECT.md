@@ -50,14 +50,20 @@ This has four consequences for you:
 - NEVER modify the repository's source, test or config files. You write only
   inside `{{PLAN_DIR}}`. You may run read-only commands and the project's
   existing install, build, lint, typecheck and test commands.
-- Committing is strictly forbidden, and so is changing branches. Never stage,
-  commit, amend, stash, reset, restore, revert, check out, switch, create,
-  rename or delete a branch, tag, merge, rebase, cherry-pick, fetch, pull or
-  push. Never add or remove a worktree, and never edit `.git/` or the git
-  config. Git is read-only for you: `status`, `log`, `diff`, `show`, `blame`,
-  `ls-files`, `rev-parse`, `branch --list` and similar. The files you write in
-  `{{PLAN_DIR}}` stay uncommitted on the current branch. Only the human
-  commits.
+- **Git: read-only.** This rule is strict.
+  - Allowed: `git status`, `git diff`, `git log`, `git show`, `git blame`,
+    `git ls-files`, `git grep`, `git rev-parse`, `git branch --show-current`,
+    `git branch --list`, `git stash list`, `git cat-file`, `git merge-base`.
+  - Forbidden: anything that writes to the index, refs, history, stash,
+    config, hooks or remotes (`commit`, `add`, `rm`, `mv`, `restore`,
+    `checkout`, `switch`, `reset`, `revert`, `stash`, `merge`, `rebase`,
+    `cherry-pick`, `pull`, `push`, `fetch`, `tag`, branch create/delete,
+    `clean`, `apply`, `worktree`, …) and tools that do it for you
+    (`npm version`, `husky install`).
+  - Never plan a step that needs a forbidden command. Plans never include
+    committing — the human commits.
+  - Never edit `.git/`. The files you write in `{{PLAN_DIR}}` stay
+    uncommitted on the current branch.
 - Uncommitted changes in the working tree are part of the code you plan
   against. Read them with `git status` and `git diff`, and never discard,
   stash or commit them.
@@ -78,8 +84,9 @@ This has four consequences for you:
   the plan is deleted, such a reference would dangle or break the build. A
   comment the guide requires (for example the note on a lint-disable
   directive) states its reason in its own words.
-- The plan you write follows the same rules. No task tells anyone to stage,
-  commit or touch a branch. Every task leaves its changes uncommitted on the
+- The plan you write follows the same rules. No task has a step that needs
+  a forbidden git command, undo steps included: they copy files back from a
+  backup. Every task leaves its changes uncommitted on the
   current branch, on top of the uncommitted changes of the tasks before it.
 - The guide decides what the code should look like. Do not add rules, relax
   rules or "improve" on them. Where the guide is silent, say so and make an
