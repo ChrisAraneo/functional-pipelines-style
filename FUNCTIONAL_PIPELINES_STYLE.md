@@ -7,8 +7,8 @@ guide.
 guide names the exception; section 15 is the only list of exceptions, and
 anything added to it carries a measurement.
 
-This guide is repo-agnostic. Section 16 lists the four blanks a repository fills
-in before the guide is usable.
+This guide is repo-agnostic. Section 16 lists the three blanks a repository
+fills in before the guide is usable.
 A repository may add its own rules in a sibling document; it may not relax the
 ones here.
 
@@ -29,7 +29,7 @@ Four tools do all of the work:
 | Tool                           | Import from            | Use it for                                                        |
 | ------------------------------ | ---------------------- | ----------------------------------------------------------------- |
 | `match(x).with(…)…`            | `ts-pattern`           | every branch, whether it has two arms or twenty                   |
-| `chain(value).thru(…).value()` | a local lodash wrapper | the backbone of a body: flow a value you hold through named steps |
+| `chain(value).thru(…).value()` | `lodash-es`            | the backbone of a body: flow a value you hold through named steps |
 | `flow(a, b, c)`                | `lodash-es`            | naming a function that _is_ the composition of existing ones      |
 | `tryCatch(tryer, catcher)`     | `ramda`                | turning a call that can throw into a value                        |
 
@@ -563,18 +563,75 @@ The verb table. The order of the rows is the order of the walk in rule 8.6.
    export type CategoryGroups = Record<Category, Item[]>;
    ```
 
-2. **String unions for fixed sets of values.** NEVER use `enum`.
-3. **NEVER use** `any`, non-null assertions (`!`), `@ts-ignore`,
+2. **A property holds data, NEVER a function.** An `interface` or a `type`
+   describes the values that flow through a pipeline; the behaviour lives in
+   the named functions the pipeline composes (section 1). A function-valued
+   property — `format: (order: Order) => string`, `onDone: () => void`, a
+   `deps`/`service`/`handlers` bag — hides code inside a value: the reader
+   cannot see which implementation the field holds, the value stops being
+   comparable, serialisable and printable in a spec, and the object takes on
+   behaviour that belongs to the functions around it. This is the worst shape
+   a type takes in this style, and it spreads: one callback field pulls in
+   the next. A standalone function type for an argument
+   (`export type Random = () => number;`) is a different thing and stays
+   allowed — section 9.1 names it; this rule is about properties.
+
+   **Every interface or type with a function-typed property is refactored on
+   sight**, whatever work brought you to the file.
+
+   ```ts
+   // NEVER
+   export interface OrderFormatter {
+     locale: string;
+     format: (order: Order) => string;
+   }
+
+   // Instead
+   export interface OrderFormat {
+     locale: string;
+   }
+
+   export const formatOrder = (order: Order, { locale }: OrderFormat): string =>
+     formatAmount(order.total, locale);
+   ```
+
+   Four moves cover every case:
+
+   - **One behaviour field.** Delete it and call the named function directly
+     where the field was read.
+   - **A bag of functions** (`deps`, `service`, `handlers`, `adapter`). Pass
+     each function as its own argument, named for what it is, the injected
+     ones last (section 7.2).
+   - **A field that picks between known behaviours.** Store the choice as a
+     string union and `match` on it inside the function (sections 4, 9.3).
+   - **A callback the caller supplies.** Make it a parameter of the function,
+     not a field of the data the function takes.
+
+   Two shapes are not yours to choose, and they are the only ones that stay:
+
+   - **A framework's own callback API** — React props (`onClick`, `onChange`,
+     a render prop), a hook's argument, an option object a third-party
+     library defines. Keep the shape the framework requires, pass a named
+     function rather than an inline body, and keep that type in the boundary
+     file that talks to the framework; it never travels inward into the types
+     the pipeline carries.
+   - **The injected effect a pipeline threads** (section 7.4): the generator
+     or clock the entry point created, carried as one field named for the
+     effect, passed on unchanged and dropped at the last step that draws
+     from it.
+
+3. **String unions for fixed sets of values.** NEVER use `enum`.
+4. **NEVER use** `any`, non-null assertions (`!`), `@ts-ignore`,
    `@ts-expect-error` or `as` casts in source files.
-4. **Reuse types instead of writing them out again:** the interface the
+5. **Reuse types instead of writing them out again:** the interface the
    previous step returns for a step's input (section 6.3), the type
    `createRandom` returns for an injected generator, `Parameters<typeof fn>`
    for a wrapper. NEVER use `ReturnType<typeof …>` where the function already
    declares a named return type (section 3.12).
-5. **Import types as types:** `import type { Item } from './types/item';`, or
+6. **Import types as types:** `import type { Item } from './types/item';`, or
    `import { type Item, EMPTY_ITEM } from './types/item';` when one line brings
    in both. Turn on `verbatimModuleSyntax` so the compiler checks it.
-6. **Run the typecheck the way the repository is wired.** In a monorepo without
+7. **Run the typecheck the way the repository is wired.** In a monorepo without
    a root project reference, a root `tsc -b` can report nothing while packages
    are broken; check each package.
 
@@ -658,26 +715,8 @@ section names it.
     with `reduce` over a promise
     (`reduce(items, (done, item) => done.then(() => handle(item)), Promise.resolve())`).
     NEVER write `for await` or an `await` inside a loop in a body.
-11. **`chain` must come from a local wrapper, NEVER straight from `lodash-es`.**
-    lodash-es attaches the wrapper's methods through a `mixin(lodash, lodash)`
-    side effect that bundlers tree-shake away, so in a production build
-    `chain(x)` returns a wrapper with no methods at all and fails only on the
-    deployed site — neither the test suite nor the dev server catches it.
-    Re-export it once, off the lodash default export, and import `chain` from
-    that module everywhere:
-
-    ```ts
-    import * as lodashModule from 'lodash-es';
-
-    const lodash = (lodashModule as unknown as { default: typeof lodashModule })
-      .default;
-
-    export const { chain } = lodash;
-    ```
-
-    This wrapper module is the one place a namespace import of lodash is
-    allowed. End every chain with `.value()`.
-
+11. **`chain`** from `lodash-es` is the backbone of a body: it flows a value
+    you hold through named steps. End every chain with `.value()`.
 12. **`flow`** from `lodash-es` runs pipelines and composes steps.
 13. **`match` and `P`** from `ts-pattern` do all branching.
 14. **`tryCatch`** from `ramda` captures every throw. Import ramda functions by
@@ -703,7 +742,8 @@ section names it.
     `sortBy` returns a new array; `reverse` does not, so copy first.
 
 18. **One library per job.** Do not add a second collection, pattern-matching or
-    date library beside the ones above; extend the local wrapper module instead.
+    date library beside the ones above; write a small named helper over them
+    instead.
 19. **Imports across package boundaries** use the repository's path aliases.
     Imports inside a package use relative paths, spelled the way its neighbours
     spell them (with or without the file extension — pick one per repository).
@@ -833,14 +873,14 @@ export it documents (section 11.5).
    `await` in a loop becomes `Promise.all` or a `reduce` over a promise, never a
    `forEach` that drops the promise; a deep `merge` keeps its fresh `{}` target.
 8. **Fix the imports.** One named `import { … } from 'lodash-es'`, in sync with
-   the helpers now used; `chain` from the local wrapper; every `'lodash'`
-   import, `require('lodash')` and `_.`-prefixed call gone. Confirm no `_.`
-   call remains.
+   the helpers now used; every `'lodash'` import, `require('lodash')` and
+   `_.`-prefixed call gone. Confirm no `_.` call remains.
 9. **Declare the return type** on every function in its own file — entry
    points, steps and helpers — including `| undefined`. Move every returned
    object shape into a named interface in the `types/` folder next to the
    function (section 3.12), and type each step's input with the interface the
-   step before it returns.
+   step before it returns. Check every interface you write or touch for a
+   function-typed property and refactor it away (section 9.2).
 10. **Run the typecheck, the linter and the specs** for the package, and add the
     missing specs from section 12. A refactor is not done until all three pass.
 
@@ -851,7 +891,6 @@ export it documents (section 11.5).
 - An `if`, `else`, `switch` or `?:` that is not a `match`.
 - A `try`, `catch` or `throw` anywhere in a body.
 - `import * as R from 'ramda'`, or an `R.tryCatch` call.
-- `import { chain } from 'lodash-es'` instead of the local wrapper.
 - An `import` of the CommonJS `lodash` package, a `require('lodash')`, an
   `import _ from 'lodash-es'`, or any `_.`-prefixed call.
 - A `forEach`, in either form — `items.forEach(…)` or `forEach(items, …)`.
@@ -879,6 +918,10 @@ export it documents (section 11.5).
 - A function in its own file without a declared return type, or one that
   returns an object typed inline or through `ReturnType<typeof …>` instead of
   a named interface in the `types/` folder next to it.
+- An `interface` or `type` with a function-typed property —
+  `onDone: () => void`, `format: (value: number) => string`, or a
+  `deps`/`service`/`handlers` bag — outside a framework's own callback props
+  or a pipeline's injected effect (section 9.2).
 - `Math.random`, `Date.now`, `process.env` or a second generator inside a
   computing function.
 - A function name that does not start with a verb from the verb table, that
@@ -909,13 +952,12 @@ add nothing to this list without them.
 
 ## 16. Adopting this guide in a new repository
 
-Fill in these four blanks, then the guide is complete for that repository:
+Fill in these three blanks, then the guide is complete for that repository:
 
 1. **The dependencies.** `lodash-es`, `ts-pattern` and `ramda` in
    `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
    named lodash imports do not type-check.
-2. **The `chain` wrapper module** (section 10.11) and its import path.
-3. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
+2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
    per package.
-4. **The real commands** for linting, typechecking and testing, including any
-   monorepo quirk that makes a root command lie (sections 9.6, 12.11).
+3. **The real commands** for linting, typechecking and testing, including any
+   monorepo quirk that makes a root command lie (sections 9.7, 12.11).
