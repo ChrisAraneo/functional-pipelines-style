@@ -766,9 +766,9 @@ section names it.
 
 18. **One library per job:** `lodash-es` for collections, `remeda` for `pipe`,
     `ts-pattern` for branching, `ramda` for `tryCatch`, and the date library
-    of rule 9. Do not add a second library for any of these jobs, and do not
-    take a helper from one of them for another's job: NEVER import remeda's
-    `map` beside lodash's.
+    of rule 9. Do not add a second library for any of these jobs; write a
+    small named helper over them instead. Do not take a helper from one of
+    them for another's job: NEVER import remeda's `map` beside lodash's.
 19. **Imports across package boundaries** use the repository's path aliases.
     Imports inside a package use relative paths, spelled the way its neighbours
     spell them (with or without the file extension — pick one per repository).
@@ -987,13 +987,11 @@ to this list without them.
 ## 16. Adopting this guide in a new repository
 
 Fill in these three blanks, then the guide is complete for that repository:
-Fill in these three blanks, then the guide is complete for that repository:
 
 1. **The dependencies.** `lodash-es`, `remeda`, `ts-pattern` and `ramda` in
    `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
    named lodash imports do not type-check.
 2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
-2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
    per package.
 3. **The real commands** for linting, typechecking and testing, including any
-   monorepo quirk that makes a root command lie (sections 9.6, 12.11).
+   monorepo quirk that makes a root command lie (sections 9.7, 12.11).
