@@ -580,18 +580,75 @@ The verb table. The order of the rows is the order of the walk in rule 8.6.
    export type CategoryGroups = Record<Category, Item[]>;
    ```
 
-2. **String unions for fixed sets of values.** NEVER use `enum`.
-3. **NEVER use** `any`, non-null assertions (`!`), `@ts-ignore`,
+2. **A property holds data, NEVER a function.** An `interface` or a `type`
+   describes the values that flow through a pipeline; the behaviour lives in
+   the named functions the pipeline composes (section 1). A function-valued
+   property — `format: (order: Order) => string`, `onDone: () => void`, a
+   `deps`/`service`/`handlers` bag — hides code inside a value: the reader
+   cannot see which implementation the field holds, the value stops being
+   comparable, serialisable and printable in a spec, and the object takes on
+   behaviour that belongs to the functions around it. This is the worst shape
+   a type takes in this style, and it spreads: one callback field pulls in
+   the next. A standalone function type for an argument
+   (`export type Random = () => number;`) is a different thing and stays
+   allowed — section 9.1 names it; this rule is about properties.
+
+   **Every interface or type with a function-typed property is refactored on
+   sight**, whatever work brought you to the file.
+
+   ```ts
+   // NEVER
+   export interface OrderFormatter {
+     locale: string;
+     format: (order: Order) => string;
+   }
+
+   // Instead
+   export interface OrderFormat {
+     locale: string;
+   }
+
+   export const formatOrder = (order: Order, { locale }: OrderFormat): string =>
+     formatAmount(order.total, locale);
+   ```
+
+   Four moves cover every case:
+
+   - **One behaviour field.** Delete it and call the named function directly
+     where the field was read.
+   - **A bag of functions** (`deps`, `service`, `handlers`, `adapter`). Pass
+     each function as its own argument, named for what it is, the injected
+     ones last (section 7.2).
+   - **A field that picks between known behaviours.** Store the choice as a
+     string union and `match` on it inside the function (sections 4, 9.3).
+   - **A callback the caller supplies.** Make it a parameter of the function,
+     not a field of the data the function takes.
+
+   Two shapes are not yours to choose, and they are the only ones that stay:
+
+   - **A framework's own callback API** — React props (`onClick`, `onChange`,
+     a render prop), a hook's argument, an option object a third-party
+     library defines. Keep the shape the framework requires, pass a named
+     function rather than an inline body, and keep that type in the boundary
+     file that talks to the framework; it never travels inward into the types
+     the pipeline carries.
+   - **The injected effect a pipeline threads** (section 7.4): the generator
+     or clock the entry point created, carried as one field named for the
+     effect, passed on unchanged and dropped at the last step that draws
+     from it.
+
+3. **String unions for fixed sets of values.** NEVER use `enum`.
+4. **NEVER use** `any`, non-null assertions (`!`), `@ts-ignore`,
    `@ts-expect-error` or `as` casts in source files.
-4. **Reuse types instead of writing them out again:** the interface the
+5. **Reuse types instead of writing them out again:** the interface the
    previous step returns for a step's input (section 6.3), the type
    `createRandom` returns for an injected generator, `Parameters<typeof fn>`
    for a wrapper. NEVER use `ReturnType<typeof …>` where the function already
    declares a named return type (section 3.12).
-5. **Import types as types:** `import type { Item } from './types/item';`, or
+6. **Import types as types:** `import type { Item } from './types/item';`, or
    `import { type Item, EMPTY_ITEM } from './types/item';` when one line brings
    in both. Turn on `verbatimModuleSyntax` so the compiler checks it.
-6. **Run the typecheck the way the repository is wired.** In a monorepo without
+7. **Run the typecheck the way the repository is wired.** In a monorepo without
    a root project reference, a root `tsc -b` can report nothing while packages
    are broken; check each package.
 
@@ -849,7 +906,8 @@ export it documents (section 11.5).
    points, steps and helpers — including `| undefined`. Move every returned
    object shape into a named interface in the `types/` folder next to the
    function (section 3.12), and type each step's input with the interface the
-   step before it returns.
+   step before it returns. Check every interface you write or touch for a
+   function-typed property and refactor it away (section 9.2).
 10. **Run the typecheck, the linter and the specs** for the package, and add the
     missing specs from section 12. A refactor is not done until all three pass.
 
@@ -893,6 +951,10 @@ export it documents (section 11.5).
 - A function in its own file without a declared return type, or one that
   returns an object typed inline or through `ReturnType<typeof …>` instead of
   a named interface in the `types/` folder next to it.
+- An `interface` or `type` with a function-typed property —
+  `onDone: () => void`, `format: (value: number) => string`, or a
+  `deps`/`service`/`handlers` bag — outside a framework's own callback props
+  or a pipeline's injected effect (section 9.2).
 - `Math.random`, `Date.now`, `process.env` or a second generator inside a
   computing function.
 - A function name that does not start with a verb from the verb table, that
@@ -925,10 +987,12 @@ to this list without them.
 ## 16. Adopting this guide in a new repository
 
 Fill in these three blanks, then the guide is complete for that repository:
+Fill in these three blanks, then the guide is complete for that repository:
 
 1. **The dependencies.** `lodash-es`, `remeda`, `ts-pattern` and `ramda` in
    `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
    named lodash imports do not type-check.
+2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
 2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
    per package.
 3. **The real commands** for linting, typechecking and testing, including any
