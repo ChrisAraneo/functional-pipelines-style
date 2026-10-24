@@ -1,18 +1,19 @@
 # Functional Pipelines Style
 
-***Every function body is a single expression that composes small steps***.
+***Every function body is a single expression: one data-first [`pipe`](https://remedajs.com/docs/#pipe) that composes small steps***.
 
 Quick example:
 
 ```ts
 export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
-  flow(
+  pipe(
+    { tiles, levelType },
     findPlayerSpawnCandidates,
     sortPlayerSpawnCandidates,
     pickPlayerSpawnCandidate,
     createPlayerSpawnPatches,
     patchPlayerSpawnTiles,
-  )({ tiles, levelType });
+  );
 ```
 
 ## What's in this repository?

@@ -198,8 +198,8 @@ Reuse the guide's own examples and procedures wherever they fit.
 
 If the guide asks the adopting repository to fill in blanks, list each one in
 `DECISIONS.md` with a proposed value backed by the codebase. Blanks include
-things like the location of constants, wrapper modules and the commands to
-run.
+things like the dependencies to add, the location of constants and the
+commands to run.
 
 ### Phase 4: Audit the codebase
 
@@ -249,8 +249,8 @@ the lanes that can run in parallel. Use this order unless the codebase gives
 you a strong reason not to, and justify any deviation:
 
 1. **Foundations.** Add the dependencies and compiler or tooling settings the
-   guide requires. Create the shared helper or wrapper modules it prescribes
-   and any documents it requires. Switch the lint rules on as **warnings**, so
+   guide requires. Create the shared helper modules it prescribes and any
+   documents it requires. Switch the lint rules on as **warnings**, so
    they report without blocking. The audit command already exists in
    `{{PLAN_DIR}}/tools/`. Do not add it, or a script that runs it, to the
    codebase.

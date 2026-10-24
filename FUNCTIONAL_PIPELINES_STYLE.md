@@ -7,31 +7,34 @@ guide.
 guide names the exception; section 15 is the only list of exceptions, and
 anything added to it carries a measurement.
 
-This guide is repo-agnostic. Section 16 lists the four blanks a repository fills
+This guide is repo-agnostic. Section 16 lists the three blanks a repository fills
 in before the guide is usable.
 A repository may add its own rules in a sibling document; it may not relax the
 ones here.
 
 ## 1. The single expression rule
 
-**A function body is a single expression: one pipeline that composes small
-named steps. A body contains no statement-level control flow.**
+**A function body is a single expression: one `pipe` that takes the data first
+and passes it through small named steps. A body contains no statement-level
+control flow.**
 
 NEVER write `if`, `else`, `switch`, `?:`, `for`, `while`, `for…of`, `forEach`,
 `try`, `catch`, `throw`, `let`, `var`, a reassignment, or a staircase of
 intermediate `const`s. Imperative code of any kind is forbidden in a body. A
-body reads as one `chain(…)` or `flow(…)` that flows a value from input to
-output. The exported function names and orders the steps; it does no logic of
-its own.
+body reads as one `pipe(data, …)` from `remeda`: the data comes first, then the
+steps it flows through, in order, from input to output. Every call is
+data-first in the same way: the data is its first argument. A body that is a
+single step — one call, one `match`, one object literal — is written as that
+step, because `pipe(x, f)` is only `f(x)`. The exported function names and
+orders the steps; it does no logic of its own.
 
-Four tools do all of the work:
+Three tools do all of the work:
 
-| Tool                           | Import from            | Use it for                                                        |
-| ------------------------------ | ---------------------- | ----------------------------------------------------------------- |
-| `match(x).with(…)…`            | `ts-pattern`           | every branch, whether it has two arms or twenty                   |
-| `chain(value).thru(…).value()` | a local lodash wrapper | the backbone of a body: flow a value you hold through named steps |
-| `flow(a, b, c)`                | `lodash-es`            | naming a function that _is_ the composition of existing ones      |
-| `tryCatch(tryer, catcher)`     | `ramda`                | turning a call that can throw into a value                        |
+| Tool                       | Import from  | Use it for                                                             |
+| -------------------------- | ------------ | ---------------------------------------------------------------------- |
+| `pipe(data, a, b, c)`      | `remeda`     | the backbone of every body: flow the data you hold through named steps |
+| `match(x).with(…)…`        | `ts-pattern` | every branch, whether it has two arms or twenty                        |
+| `tryCatch(tryer, catcher)` | `ramda`      | turning a call that can throw into a value                             |
 
 When you see the construct on the left, write the one on the right instead. This
 table is the checklist for a refactor.
@@ -42,11 +45,14 @@ table is the checklist for a refactor.
 | `cond ? a : b`                                                | `match(x).with(…).otherwise(…)`                                         |
 | `if / else if / else`, `switch`                               | `match(x).with(…).with(…).exhaustive()` or `.otherwise(…)`              |
 | `instanceof` / `typeof` ladder                                | `match(x).with(instanceOf(Error), …)` after `const { instanceOf } = P;` |
-| `for` / `while` / `forEach` that accumulates                  | `map`, `filter`, `reduce`, `times`, `range`, or `chain().thru()`        |
+| `for` / `while` / `forEach` that accumulates                  | `map`, `filter`, `reduce`, `times`, `range`, or a `pipe`                |
 | `try { … } catch (error) { … }`                               | `tryCatch(() => …, (error) => fallback)`                                |
 | `throw new Error(…)`                                          | return the fallback from the `tryCatch` catcher                         |
-| `let acc = …; acc = …`                                        | thread the value through `.thru()` or `flow` steps                      |
-| `const a = …; const b = f(a);`                                | `chain(a).thru(f).thru(g).value()`                                      |
+| `let acc = …; acc = …`                                        | thread the value through `pipe` steps                                   |
+| `const a = …; const b = f(a);`                                | `pipe(a, f, g)`                                                         |
+| `chain(a).thru(f).thru(g).value()`                            | `pipe(a, f, g)`                                                         |
+| `flow(f, g)`, `piped(f, g)`, `compose(g, f)`                  | `(a: A): C => pipe(a, f, g)` (section 3.5)                              |
+| `map(toName)` or any other data-last call                     | `(items) => map(items, toName)` (section 3.5)                           |
 | `if (x == null) return` guards                                | thread `X \| undefined`, short-circuit with `?.` or lodash `get`        |
 | `() => undefined`                                             | lodash `noop`                                                           |
 | `.length`, `items.map(…)`                                     | `size(…)`, `map(items, …)`                                              |
@@ -121,13 +127,14 @@ table is the checklist for a refactor.
    keyword, a class, or `this`.
 2. **Single-expression bodies.** Write `(items) => …`, not
    `(items) => { return …; }`.
-3. **Name a value mid-expression with `chain`**, never with a local:
+3. **Name a value mid-expression with a `pipe` step**, never with a local:
 
    ```ts
-   chain(filter(getNeighbours(grid, row, column), isCountable))
-     .thru((found) => maxBy(uniq(found), (item) => countOf(found, item)))
-     .thru((commonest) => commonest ?? FALLBACK)
-     .value();
+   pipe(
+     filter(getNeighbours(grid, row, column), isCountable),
+     (found) => maxBy(uniq(found), (item) => countOf(found, item)),
+     (commonest) => commonest ?? FALLBACK,
+   );
    ```
 
 4. **Carry extra state forward as an object**, adding one property per step.
@@ -135,34 +142,41 @@ table is the checklist for a refactor.
 
    ```ts
    export const parsePayload = (input: Input): Output =>
-     chain({ raw: getField(input) })
-       .thru(({ raw }) => ({ raw, parsed: parse(raw) }))
-       .thru(({ raw, parsed }) => ({ parsed, patched: patch(parsed, raw) }))
-       .thru(({ patched }) => format(patched))
-       .value();
+     pipe(
+       { raw: getField(input) },
+       ({ raw }) => ({ raw, parsed: parse(raw) }),
+       ({ raw, parsed }) => ({ parsed, patched: patch(parsed, raw) }),
+       ({ patched }) => format(patched),
+     );
    ```
 
-5. **`chain` versus `flow`.** Use `chain` when you hold a value and want to flow
-   it through steps. Use `flow` when you want to name a new function that _is_
-   the composition of existing ones:
+5. **Data first, always.** `pipe` takes the data as its first argument, and
+   every argument after it is a step: a function of one argument, the output of
+   the step before. Every composition is a `pipe(data, …)`. NEVER compose
+   functions without their data: no lodash `chain` or `flow`, no remeda `piped`,
+   no ramda `pipe` or `compose`. To name a function that _is_ the composition of
+   existing ones, write an arrow that pipes its argument:
 
    ```ts
-   export const formatName: (name: string) => string = flow(
-     trim,
-     toLower,
-     capitalize,
-   );
+   export const formatName = (name: string): string =>
+     pipe(name, trim, toLower, capitalize);
    ```
 
-   They nest: a `.thru()` step may be a `flow(…)`, and a `flow` step may be a
-   `chain(…).value()`.
+   Pass a function of one argument bare, as `trim` is above. When a step needs
+   more arguments, write an arrow that passes its input first:
+   `(items) => take(items, PAGE_SIZE)`. Every other call is data-first too: the
+   data is the first argument (`map(items, toName)`). NEVER use a curried,
+   data-last form that returns a function waiting for its data — remeda's
+   `map(toName)`, `lodash/fp`, ramda's curried helpers.
 
-6. **Extract each meaningful step into its own named function** so the chain
+   Pipes nest: a step may be an arrow whose body is its own `pipe(…)`.
+
+6. **Extract each meaningful step into its own named function** so the pipe
    reads as a sentence. Reuse an existing step before writing a new one.
 7. **Block bodies are a narrow exception.** A block body is allowed only when a
    function needs several named values that are each read more than once, and
    then it holds nothing but `const` declarations and one `return`. Prefer
-   `chain`.
+   `pipe`.
 8. **No mutation.** NEVER reassign a name or change an argument. Return new
    arrays and objects. Copy with `[...items]` or `{ ...record }`. Lodash
    `reverse` changes the array it is given, so copy first:
@@ -333,24 +347,25 @@ table is the checklist for a refactor.
    export const getPrimaryEmail = (
      user: User | undefined,
    ): string | undefined =>
-     chain(user)
-       .thru((user) => user?.emails)
-       .thru((emails) => emails?.[0])
-       .value();
+     pipe(
+       user,
+       (user) => user?.emails,
+       (emails) => emails?.[0],
+     );
    ```
 
-6. **Side effects live at the edge**, in the outermost handler, never mid-chain.
-   When a chain step must run an effect and pass its value on, use a `runEffect`
-   helper of your own:
+6. **Side effects live at the edge**, in the outermost handler, never in the
+   middle of a pipe. When a pipe step must run an effect and pass its value on,
+   use a `runEffect` helper of your own:
 
    ```ts
    export const runEffect = <T>(value: T, effect: (value: T) => void): T =>
      match(effect(value)).otherwise(() => value);
    ```
 
-   NEVER write `.thru(() => void expr)` or `.thru(() => null)` — both collapse
-   the lodash wrapper type to `never` and `.value()` disappears. When a step
-   really must yield `null`, type it: `.thru((): Shader | null => null)`.
+   and call it as a step: `(scene) => runEffect(scene, drawScene)`. NEVER write
+   a step that returns nothing, such as `(scene) => void drawScene(scene)`:
+   every step after it receives `undefined`.
 
 ## 6. Pipelines
 
@@ -358,21 +373,23 @@ A change made in more than one step is a pipeline. Every pipeline has this
 shape.
 
 1. **The entry point** takes plain arguments, packs them into one object and
-   runs the steps with `flow` from `lodash-es`. It does nothing else.
+   pipes that object through the steps with `pipe` from `remeda`: the object
+   first, then the steps in order. It does nothing else.
 
    ```ts
    export const removeExpiredRecords = (
      records: Record[],
      now: number,
    ): Record[] =>
-     flow(
+     pipe(
+       { records, now },
        computeExpiryWindow,
        filterExpiredRecords,
        sortExpiredRecordsRandomly,
        sliceExpiredRecords,
        createRemovals,
        patchRecords,
-     )({ records, now });
+     );
    ```
 
 2. **One step per file**, in `internal/`. A step takes one object, destructures
@@ -428,7 +445,7 @@ shape.
 
    ```ts
    export const createWorld = (name: string): World =>
-     chain(createRandom(name)).thru(createTerrain).value();
+     pipe(name, createRandom, createTerrain);
    ```
 
 4. **A pipeline carries the generator as a field** until the last step that
@@ -493,7 +510,7 @@ shape.
      never suits.
    - The rule covers every function you name: entry points, steps, helpers and
      spec helpers. Functions imported from a library keep their names (`map`,
-     `flow`, `match`, `tryCatch`), and so do parameters that receive an
+     `pipe`, `match`, `tryCatch`), and so do parameters that receive an
      injected effect (`random`, `now`, section 7.2).
 
 The verb table. The order of the rows is the order of the walk in rule 8.6.
@@ -658,27 +675,15 @@ section names it.
     with `reduce` over a promise
     (`reduce(items, (done, item) => done.then(() => handle(item)), Promise.resolve())`).
     NEVER write `for await` or an `await` inside a loop in a body.
-11. **`chain` must come from a local wrapper, NEVER straight from `lodash-es`.**
-    lodash-es attaches the wrapper's methods through a `mixin(lodash, lodash)`
-    side effect that bundlers tree-shake away, so in a production build
-    `chain(x)` returns a wrapper with no methods at all and fails only on the
-    deployed site — neither the test suite nor the dev server catches it.
-    Re-export it once, off the lodash default export, and import `chain` from
-    that module everywhere:
-
-    ```ts
-    import * as lodashModule from 'lodash-es';
-
-    const lodash = (lodashModule as unknown as { default: typeof lodashModule })
-      .default;
-
-    export const { chain } = lodash;
-    ```
-
-    This wrapper module is the one place a namespace import of lodash is
-    allowed. End every chain with `.value()`.
-
-12. **`flow`** from `lodash-es` runs pipelines and composes steps.
+11. **`pipe` from `remeda` runs pipelines and composes steps**, and nothing
+    else does. Import it by name, `import { pipe } from 'remeda';`, and import
+    nothing else from `remeda`: lodash already covers collections (rule 18),
+    and remeda's data-last forms break the data-first rule (section 3.5).
+    NEVER import `chain`, `flow`, `flowRight` or `thru` from `lodash-es`,
+    `piped` from `remeda`, or `pipe` or `compose` from `ramda`.
+12. **`pipe` is typed for at most 15 steps** after the data; the type checker
+    rejects a sixteenth. When a pipeline needs more, group a run of its steps
+    into a named step whose body is its own `pipe`.
 13. **`match` and `P`** from `ts-pattern` do all branching.
 14. **`tryCatch`** from `ramda` captures every throw. Import ramda functions by
     name and call them bare: NEVER `import * as R from 'ramda'`, NEVER
@@ -702,8 +707,11 @@ section names it.
 
     `sortBy` returns a new array; `reverse` does not, so copy first.
 
-18. **One library per job.** Do not add a second collection, pattern-matching or
-    date library beside the ones above; extend the local wrapper module instead.
+18. **One library per job:** `lodash-es` for collections, `remeda` for `pipe`,
+    `ts-pattern` for branching, `ramda` for `tryCatch`, and the date library
+    of rule 9. Do not add a second library for any of these jobs, and do not
+    take a helper from one of them for another's job: NEVER import remeda's
+    `map` beside lodash's.
 19. **Imports across package boundaries** use the repository's path aliases.
     Imports inside a package use relative paths, spelled the way its neighbours
     spell them (with or without the file extension — pick one per repository).
@@ -825,17 +833,18 @@ export it documents (section 11.5).
 5. **Thread absence** as `X | undefined`, short-circuiting with `?.` or lodash
    `get`, and delete the null guards.
 6. **Kill the locals.** Collapse the `const` staircase and every `let` into one
-   `chain(…).thru(…).value()` or `flow(…)`, carrying extra context by adding a
-   property per step.
+   `pipe(data, …)` that starts with the data, carrying extra context by adding
+   a property per step. Rewrite every `chain(…).thru(…).value()`, `flow(…)`,
+   `piped(…)` and `compose(…)` as a `pipe` the same way (section 3.5).
 7. **Sweep the natives into lodash**, row by row down the table in section 10.3,
    checking each swap for the semantics the original had: an early exit becomes
    `find`/`some`/`every`/`takeWhile`, never a `forEach` that returns `false`; an
    `await` in a loop becomes `Promise.all` or a `reduce` over a promise, never a
    `forEach` that drops the promise; a deep `merge` keeps its fresh `{}` target.
 8. **Fix the imports.** One named `import { … } from 'lodash-es'`, in sync with
-   the helpers now used; `chain` from the local wrapper; every `'lodash'`
-   import, `require('lodash')` and `_.`-prefixed call gone. Confirm no `_.`
-   call remains.
+   the helpers now used; `import { pipe } from 'remeda'` and nothing else from
+   `remeda`; every `chain`, `flow`, `'lodash'` import, `require('lodash')` and
+   `_.`-prefixed call gone. Confirm no `_.` call, `chain(` or `flow(` remains.
 9. **Declare the return type** on every function in its own file — entry
    points, steps and helpers — including `| undefined`. Move every returned
    object shape into a named interface in the `types/` folder next to the
@@ -851,7 +860,12 @@ export it documents (section 11.5).
 - An `if`, `else`, `switch` or `?:` that is not a `match`.
 - A `try`, `catch` or `throw` anywhere in a body.
 - `import * as R from 'ramda'`, or an `R.tryCatch` call.
-- `import { chain } from 'lodash-es'` instead of the local wrapper.
+- Any composition that is not `pipe(data, …)`: a `chain(…).thru(…).value()`, a
+  `flow`, `flowRight`, `piped` or `compose`.
+- A data-last call that returns a function waiting for its data
+  (`map(toName)`), or an import from `remeda` other than `pipe`.
+- A `pipe` around a single step (`pipe(x, f)` for `f(x)`), or a step that
+  returns nothing (`(scene) => void drawScene(scene)`).
 - An `import` of the CommonJS `lodash` package, a `require('lodash')`, an
   `import _ from 'lodash-es'`, or any `_.`-prefixed call.
 - A `forEach`, in either form — `items.forEach(…)` or `forEach(items, …)`.
@@ -900,22 +914,22 @@ says it must. Each one carries a comment naming the measurement.
    around it stay single expressions.
 
 **Measure before assuming.** Figures from one profiled TypeScript codebase, as
-an order of magnitude: a `ts-pattern` `match` costs roughly 85ns per call and a
-`chain().thru().value()` roughly 135ns — cheap enough for per-item use in
-anything a user waits on. What actually hurt was a closure inside a
-million-iteration numeric kernel: the pipeline forms of one blur accumulator
-measured 93ms against 263ms per run. Record your own numbers in the comment, and
-add nothing to this list without them.
+an order of magnitude: a `ts-pattern` `match` costs roughly 85ns per call —
+cheap enough for per-item use in anything a user waits on. A remeda `pipe` is
+cheaper still: in a Node microbenchmark, a three-step `pipe` measured roughly
+13ns per call. What actually hurt was a closure inside a million-iteration
+numeric kernel: the pipeline forms of one blur accumulator measured 93ms
+against 263ms per run. Record your own numbers in the comment, and add nothing
+to this list without them.
 
 ## 16. Adopting this guide in a new repository
 
-Fill in these four blanks, then the guide is complete for that repository:
+Fill in these three blanks, then the guide is complete for that repository:
 
-1. **The dependencies.** `lodash-es`, `ts-pattern` and `ramda` in
+1. **The dependencies.** `lodash-es`, `remeda`, `ts-pattern` and `ramda` in
    `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
    named lodash imports do not type-check.
-2. **The `chain` wrapper module** (section 10.11) and its import path.
-3. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
+2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
    per package.
-4. **The real commands** for linting, typechecking and testing, including any
+3. **The real commands** for linting, typechecking and testing, including any
    monorepo quirk that makes a root command lie (sections 9.6, 12.11).
