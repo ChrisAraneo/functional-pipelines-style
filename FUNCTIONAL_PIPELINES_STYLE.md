@@ -7,7 +7,7 @@ guide.
 guide names the exception; section 15 is the only list of exceptions, and
 anything added to it carries a measurement.
 
-This guide is repo-agnostic. Section 16 lists the three blanks a repository fills
+This guide is repo-agnostic. Section 16 lists the four blanks a repository fills
 in before the guide is usable.
 A repository may add its own rules in a sibling document; it may not relax the
 ones here.
@@ -62,64 +62,162 @@ table is the checklist for a refactor.
 | `for await`, `await` inside a loop                            | `Promise.all(map(…))`, or a `reduce` over a promise (section 10.10)     |
 | `Math.random()`, `Date.now()`                                 | a generator or clock passed in as an argument (section 7)               |
 
-## 2. Files and folders
+## 2. Libs, apps, modules and files
 
-1. **One export per file.** Name the file after its export, in kebab-case:
-   `filterEligibleItems` → `filter-eligible-items.ts`, `ProductCategory` →
-   `product-category.ts`.
-2. **Named exports only.** NEVER use `export default`.
-3. **Every file that exports a function has a spec beside it** with the same
-   base name: `filter-eligible-items.spec.ts`. Files in `internal/` get specs
-   too.
-4. **Each feature gets its own folder:**
+1. **Code lives in libs and apps.** Every package in the repository is one or
+   the other: a lib in `libs/<name>/`, an app in `apps/<name>/`. NEVER put
+   source code anywhere else. Libs and apps may be Nx projects, but need not
+   be: the rules are the same in any workspace.
+2. **An app is a finished product built from libs**: a web app, a server, a
+   CLI, a worker — something a person runs or deploys. It holds only what turns
+   the libs into that product: its entry point, the wiring its framework needs
+   (routes, components, handlers, commands) and the edge where IO and rendering
+   happen (sections 5.6, 7.7). The logic it runs lives in libs. An app imports
+   libs through their `index.ts` (rule 6); nothing imports an app. Inside, an
+   app keeps the layout its framework expects, and rules 12–16 apply to every
+   file in it. NEVER put a `types/` folder directly in an app's `src/`:
+   `src/types/` is forbidden, while `src/engine/types/` is fine, because types
+   live next to the code that uses them (rule 10).
+3. **Libs are split by responsibility, and a human decides the split.** Each
+   lib owns one area: a domain (`shop`), the model several domains share
+   (`model`), one outside service (`payments`). Which libs exist is mostly a
+   human's choice, recorded when the guide is adopted (section 16). NEVER
+   create, split, merge or rename a lib on your own: put new code in the lib
+   whose responsibility it serves, and when no lib fits, say so and let a human
+   decide.
+4. **General code goes in the `common` lib.** Base types and general-purpose
+   functions that many libs need and that belong to no lib's own
+   responsibility — `runEffect` (section 5.6), `createRandom` (section 7.3) —
+   live in `libs/common/`. That is the default; a human may give a large shared
+   concern a lib of its own. `common` imports no other lib. NEVER move a
+   function into `common` only because two libs use it: a function that serves
+   one lib's responsibility stays in that lib, and the other lib imports it
+   through that lib's `index.ts`.
+5. **Every lib has one layout:** `src/index.ts` and one folder per module,
+   directly in `src/` (`src/engine/`, `src/checkout/`), with no `modules/`
+   folder around them. Nothing else goes in `src/`. The project files a lib
+   needs (`package.json`, `project.json`, `tsconfig.json`) sit beside `src/`,
+   never in it. NEVER put a `types/` folder directly in `src/`: `src/types/` is
+   forbidden, while `src/engine/types/` is fine, because every type lives
+   inside a module (rule 10).
 
    ```text
-   checkout/
-   ├── create-order.ts                entry point, the only file callers import
-   ├── create-order.spec.ts
-   ├── types/
-   │   └── order.ts                   what create-order returns
-   └── internal/                      private to checkout/
-       ├── filter-eligible-items.ts
-       ├── filter-eligible-items.spec.ts
-       ├── …
-       └── types/                     types of the functions in internal/
-           ├── eligible-items.ts
-           └── …
-   catalog/
-   ├── get-categories.ts              a folder may have several entry points
-   ├── filter-featured-products.ts
-   ├── slice-for-page.ts
-   ├── internal/
-   └── types/                         types of the entry points; callers use them
-       ├── category.ts
-       └── product-group.ts
+   apps/
+   └── storefront/                     a finished product built from the libs
+   libs/
+   ├── common/
+   │   └── src/
+   │       ├── index.ts
+   │       ├── effects/                runEffect
+   │       └── random/                 createRandom
+   └── shop/
+       ├── package.json                project files sit beside src/
+       └── src/
+           ├── index.ts                the lib's public API: re-exports only
+           ├── catalog/                one folder per module
+           └── checkout/
    ```
 
-5. **Files at the root of a feature folder are its entry points.** Code outside
-   the folder imports only those. NEVER import from another folder's
-   `internal/`.
-6. **Types get their own file, in the `types/` folder next to the functions
-   that use them.** The types of the entry points go in `types/<name>.ts`; the
-   types of the functions in `internal/` go in `internal/types/<name>.ts`. A
-   type shared by functions in several folders goes in the `types/` folder of
-   the first parent folder they have in common: a type that `checkout/` and
-   `catalog/` both use goes in their parent's `types/`, never in either
-   feature's own. NEVER declare a type in a file that holds a function.
-7. **Shared helpers move up a level.** A helper that two features need in the
-   same form lives in their parent folder. If each feature needs a slightly
-   different version, each keeps its own copy in its `internal/`. NEVER add a
-   flag parameter just so two features can share one function.
-8. **Constants.** A tuning value that several files or tests need goes in the
-   nearest `consts.ts`. A value only one file needs is a non-exported
-   `UPPER_SNAKE_CASE` constant at the top of that file:
-   `const RETRY_ROUNDS = 2;`. Name every number whose meaning is not plain from
-   the line it sits on.
-9. **Freeze exported arrays and objects** and type them `readonly`:
+6. **`src/index.ts` is the lib's barrel and its only way in.** It re-exports,
+   by name, the entry points and types of its own modules that other libs and
+   apps use, and nothing else: no code, no `export *`, no renaming with `as`,
+   nothing from another lib or a package. It is the only file in the
+   repository that re-exports (rule 13).
 
    ```ts
-   export const RETRY_DELAYS: readonly number[] = Object.freeze([200, 1_000]);
+   export { getCategories } from './catalog/get-categories';
+   export type { Category } from './catalog/types/category';
+   export { createOrder } from './checkout/create-order';
+   export type { Order } from './checkout/types/order';
    ```
+
+   Code outside the lib imports only from the barrel, through the path alias
+   (section 10.19): `import { createOrder } from '@acme/shop';`. NEVER reach
+   past it into another lib's modules. NEVER add an `index.ts` anywhere else:
+   a module has no barrel of its own.
+
+7. **Modules are split by responsibility, as finely as the code allows.** Every
+   folder in a lib's `src/` is a module, and a module owns exactly one
+   responsibility: `checkout` places orders, `catalog` lists products. Give
+   each independent responsibility its own module; prefer many small modules
+   to a few large ones, and split a module as soon as it takes on a second
+   responsibility. Unlike libs, modules are yours to create and split. A module
+   depends on as few other modules as it can, and two modules NEVER import from
+   each other, directly or through a chain.
+8. **Every module is laid out the same way:** its entry points at its root, the
+   types they return in `types/`, and everything private in `internal/`:
+
+   ```text
+   libs/shop/src/
+   ├── index.ts
+   ├── catalog/
+   │   ├── get-categories.ts          a module may have several entry points
+   │   ├── filter-featured-products.ts
+   │   ├── slice-for-page.ts
+   │   ├── internal/
+   │   └── types/                     types of the entry points; callers use them
+   │       ├── category.ts
+   │       └── product-group.ts
+   └── checkout/
+       ├── create-order.ts            entry point; index.ts and other modules import it
+       ├── create-order.spec.ts
+       ├── types/
+       │   └── order.ts               what create-order returns
+       └── internal/                  private to checkout/
+           ├── filter-eligible-items.ts
+           ├── filter-eligible-items.spec.ts
+           ├── …
+           └── types/                 types of the functions in internal/
+               ├── eligible-items.ts
+               └── …
+   ```
+
+9. **Files at the root of a module are its entry points.** Code outside the
+   module imports only those and their `types/`. NEVER import from another
+   folder's `internal/`.
+10. **Types get their own file, in the `types/` folder next to the functions
+    that use them.** The types of the entry points go in `types/<name>.ts`; the
+    types of the functions in `internal/` go in `internal/types/<name>.ts`. A
+    type shared by functions in several folders of one module goes in the
+    `types/` folder of the first parent folder they have in common. A type that
+    several modules share belongs to the module whose responsibility it
+    describes, in that module's `types/`, and the others import it from there;
+    a base type that many libs share goes in `common` (rule 4). A `types/`
+    folder never sits above a module (rule 5). NEVER declare a type in a file
+    that holds a function.
+11. **Shared helpers move up a level, but never above a module.** A helper
+    that two folders of one module need in the same form lives in their first
+    common parent folder. A helper that two modules need becomes an entry point
+    of the module whose responsibility it serves — a new module when it serves
+    a responsibility of its own — or moves to `common` when it is general
+    (rule 4). If each caller needs a slightly different version, each keeps its
+    own copy in its `internal/`. NEVER add a flag parameter just so two
+    features can share one function.
+12. **One export per file.** Name the file after its export, in kebab-case:
+    `filterEligibleItems` → `filter-eligible-items.ts`, `ProductCategory` →
+    `product-category.ts`. A lib's `src/index.ts` is the one file with several
+    (rule 6).
+13. **Named exports only, and only of what the file declares.** NEVER use
+    `export default`. NEVER re-export, in any form: no `export … from` or
+    `export type … from`, no import exported again
+    (`import { trim } from 'lodash-es'; export { trim };`), no imported value
+    exported under a new name (`export const formatTitle = startCase;`), and
+    no type that only renames an imported one (`export type Customer = User;`).
+    Callers import a thing from the file that declares it. A lib's
+    `src/index.ts` is the one exception, within the limits of rule 6.
+14. **Every file that exports a function has a spec beside it** with the same
+    base name: `filter-eligible-items.spec.ts`. Files in `internal/` get specs
+    too; `src/index.ts`, which only re-exports, does not.
+15. **Constants.** A tuning value that several files or tests need goes in the
+    nearest `consts.ts`. A value only one file needs is a non-exported
+    `UPPER_SNAKE_CASE` constant at the top of that file:
+    `const RETRY_ROUNDS = 2;`. Name every number whose meaning is not plain
+    from the line it sits on.
+16. **Freeze exported arrays and objects** and type them `readonly`:
+
+    ```ts
+    export const RETRY_DELAYS: readonly number[] = Object.freeze([200, 1_000]);
+    ```
 
 ## 3. Functions
 
@@ -193,7 +291,7 @@ table is the checklist for a refactor.
     step and helper alike — MUST declare its return type, including
     `| undefined` variants. NEVER leave it to inference.
     - **An object is returned as a named interface.** Declare it in the
-      `types/` folder next to the function (section 2.6), one interface per
+      `types/` folder next to the function (section 2.10), one interface per
       file, and import it with `import type`. NEVER write the object shape
       inline in the signature.
     - **Name the interface after the value it describes**, with the feature's
@@ -201,9 +299,8 @@ table is the checklist for a refactor.
       returns a `BeartrapSlice`, `createBeartrapPatches` a `BeartrapPatch`.
     - **Functions may share an interface only when it makes sense in the
       domain**: when they return the same thing, not merely the same shape.
-      When they live in different folders, the shared interface goes in the
-      `types/` folder of the first parent folder they have in common
-      (section 2.6).
+      When they live in different folders, the shared interface goes where
+      section 2.10 puts a shared type.
     - **Anything else declares its type as it is**: `number`, `Tile[][]`,
       `Layout`, `User | undefined`.
 
@@ -769,9 +866,10 @@ section names it.
     of rule 9. Do not add a second library for any of these jobs; write a
     small named helper over them instead. Do not take a helper from one of
     them for another's job: NEVER import remeda's `map` beside lodash's.
-19. **Imports across package boundaries** use the repository's path aliases.
-    Imports inside a package use relative paths, spelled the way its neighbours
-    spell them (with or without the file extension — pick one per repository).
+19. **Imports across lib and app boundaries** use the repository's path aliases
+    and land on a lib's `src/index.ts` (section 2.6). Imports inside a lib or
+    an app use relative paths, spelled the way its neighbours spell them (with
+    or without the file extension — pick one per repository).
 
 ## 11. Layout and comments
 
@@ -902,6 +1000,8 @@ export it documents (section 11.5).
    the helpers now used; `import { pipe } from 'remeda'` and nothing else from
    `remeda`; every `chain`, `flow`, `'lodash'` import, `require('lodash')` and
    `_.`-prefixed call gone. Confirm no `_.` call, `chain(` or `flow(` remains.
+   Delete every re-export outside a lib's barrel and point its importers at
+   the file that declares the export (section 2.13).
 9. **Declare the return type** on every function in its own file — entry
    points, steps and helpers — including `| undefined`. Move every returned
    object shape into a named interface in the `types/` folder next to the
@@ -939,6 +1039,17 @@ export it documents (section 11.5).
   `add`/`subtract`.
 - A `P.*` used inline in a pattern instead of destructured at the top of the
   file.
+- A `src/types/` folder in a lib or an app, or any file in a lib's `src/` other
+  than `index.ts` (sections 2.2, 2.5).
+- A re-export outside a lib's `src/index.ts`, in any form: `export … from`, an
+  imported value or type exported again, or exported under a new name
+  (section 2.13).
+- An import that reaches past a lib's `index.ts` into its modules, an
+  `index.ts` anywhere but a lib's `src/`, or a barrel line that is an
+  `export *`, renames with `as`, or re-exports from another lib or a package
+  (section 2.6).
+- An import from an app, an import of another lib into `common`, or two
+  modules or libs that import from each other (sections 2.2, 2.4, 2.7).
 - An `instanceof` or `typeof` ladder.
 - A `.length` read, or an array method (`.map`, `.filter`, `.forEach`) where a
   lodash function belongs.
@@ -986,12 +1097,15 @@ to this list without them.
 
 ## 16. Adopting this guide in a new repository
 
-Fill in these three blanks, then the guide is complete for that repository:
+Fill in these four blanks, then the guide is complete for that repository:
 
-1. **The dependencies.** `lodash-es`, `remeda`, `ts-pattern` and `ramda` in
+1. **The libs and apps** (sections 2.1–2.4): each lib with the responsibility
+   it owns, and each app with the libs it is built from. A human makes this
+   split; the guide fixes only the layout inside each lib.
+2. **The dependencies.** `lodash-es`, `remeda`, `ts-pattern` and `ramda` in
    `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
    named lodash imports do not type-check.
-2. **Where constants live** (section 2.8): the path of the nearest `consts.ts`
+3. **Where constants live** (section 2.15): the path of the nearest `consts.ts`
    per package.
-3. **The real commands** for linting, typechecking and testing, including any
+4. **The real commands** for linting, typechecking and testing, including any
    monorepo quirk that makes a root command lie (sections 9.7, 12.11).
