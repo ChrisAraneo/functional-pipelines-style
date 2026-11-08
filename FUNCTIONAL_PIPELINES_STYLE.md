@@ -3,30 +3,167 @@
 These rules apply to every TypeScript file in a repository that adopts this
 guide.
 
-**MUST** and **NEVER** mean exactly that. A rule may only be broken where this
-guide names the exception; section 15 is the only list of exceptions, and
-anything added to it carries a measurement.
+**How to read it.** Every rule stands on its own and has a number that never
+changes, so one rule can be quoted, checked or cited alone. The rules are
+ordered by impact: rule 1 rewrites every function in the repository, rule 86
+changes one line in a `package.json`. Work down the list, not up it.
 
-This guide is repo-agnostic. Section 16 lists the four blanks a repository fills
-in before the guide is usable.
-A repository may add its own rules in a sibling document; it may not relax the
-ones here.
+**MUST** and **NEVER** mean exactly that. Appendix B is the only list of
+exceptions, and anything added to it carries a measurement.
 
-## 1. The single expression rule
+This guide is repo-agnostic. Appendix E lists the four blanks a repository
+fills in before the guide is usable. A repository may add its own rules in a
+sibling document; it may not relax the ones here.
+
+## Contents
+
+**Part 1 — Every function body**
+
+1. One expression per body
+2. No statement-level control flow
+3. Arrow functions only
+4. `match` does every branch
+5. `tryCatch` replaces `try`, `catch` and `throw`
+6. Never mutate
+7. No loops
+8. Data first, always
+9. Carry state forward as an object, never a `let`
+10. Extract every meaningful step into a named function
+11. Destructure the pattern helpers off `P`
+
+**Part 2 — The vocabulary: four libraries**
+
+12. One library per job
+13. `lodash-es` for everything it covers
+14. The native-to-lodash replacement table
+15. Import every library function by name
+16. `pipe` comes from `remeda`, and nothing else does
+17. Mutating lodash helpers are banned; the fresh-target forms are not
+18. Async stays out of the collection helpers
+19. `sortBy` is stable, and tests depend on it
+20. Arithmetic goes through lodash
+21. Prefer the arrow over the property shorthand
+22. lodash type guards narrow
+23. Dates are not lodash's job
+24. `pipe` takes at most 15 steps
+
+**Part 3 — Pipelines**
+
+25. A change made in more than one step is a pipeline
+26. One step per file, in `internal/`
+27. Each step takes the interface the step before it returns
+28. Change data through collected edits
+29. Pass on only what later steps read
+30. The last step returns the result itself
+31. One pipeline per operation, not per variant
+32. The step verbs come in a fixed order
+
+**Part 4 — Where code lives**
+
+33. Code lives in libs and apps
+34. Libs are split by responsibility, and a human decides the split
+35. Every lib has one layout
+36. `src/index.ts` is the lib's barrel and its only way in
+37. Modules are split by responsibility, as finely as the code allows
+38. Every module is laid out the same way
+39. One export per file
+40. Named exports only, and never a re-export
+41. Every type gets its own file, in `types/`
+42. Every file that exports a function has a spec beside it
+43. General code goes in the `common` lib
+44. Shared helpers move up a level, but never above a module
+45. Import across a boundary through the alias, inside it by relative path
+
+**Part 5 — Signatures and types**
+
+46. Every function declares its return type
+47. An object is returned as a named interface
+48. A property holds data, never a function
+49. Never `any`, `!`, `@ts-ignore` or `as`
+50. String unions for fixed sets of values
+51. `interface` for object shapes, `type` for everything else
+52. Argument order is fixed per domain and never varies
+53. Reuse a type instead of writing it out again
+54. Import types as types
+
+**Part 6 — Effects, failure and absence**
+
+55. Never call an ambient source of truth inside a function that computes
+56. Side effects, IO and rendering live at the edge
+57. The injected effect is the last argument
+58. One generator per run, created from an explicit seed
+59. A pipeline carries the generator as a field
+60. The order of the draws is part of the output
+61. Thread absence as `X | undefined`
+62. Async failure folds on the promise
+63. Annotate the `const` a `tryCatch` goes into
+64. Normalize an unknown error with `match`
+
+**Part 7 — Naming**
+
+65. Every function name starts with a verb from the verb table
+66. One word per concept, repository-wide
+67. Steps carry the feature's name
+68. Reuse the nouns of existing function names
+69. Use words, not letters
+70. Case
+
+**Part 8 — Tests**
+
+71. One runner, and no test machinery
+72. Test every step on its own
+73. Every spec covers this list
+74. One `describe` per file, named exactly after the function
+75. Titles read `should … when …`
+76. Fixtures are constants, factories and legends
+77. Assertions
+78. What a spec may do that a source file may not
+79. A slow test carries its own timeout
+
+**Part 9 — Constants, layout and comments**
+
+80. No comments
+81. Keep public JSDoc when refactoring
+82. Name every unexplained number
+83. Freeze exported arrays and objects
+84. Import order
+85. Blank lines
+86. Know the commands that actually run
+
+**Appendices**
+
+- A. The verb table
+- B. The two measured exceptions
+- C. Turning imperative code into a pipeline
+- D. Remove these on sight
+- E. Adopting this guide in a new repository
+
+## Part 1 — Every function body
+
+### 1. One expression per body
 
 **A function body is a single expression: one `pipe` that takes the data first
-and passes it through small named steps. A body contains no statement-level
-control flow.**
+and passes it through small named steps.**
 
-NEVER write `if`, `else`, `switch`, `?:`, `for`, `while`, `for…of`, `forEach`,
-`try`, `catch`, `throw`, `let`, `var`, a reassignment, or a staircase of
-intermediate `const`s. Imperative code of any kind is forbidden in a body. A
-body reads as one `pipe(data, …)` from `remeda`: the data comes first, then the
-steps it flows through, in order, from input to output. Every call is
-data-first in the same way: the data is its first argument. A body that is a
-single step — one call, one `match`, one object literal — is written as that
-step, because `pipe(x, f)` is only `f(x)`. The exported function names and
-orders the steps; it does no logic of its own.
+A body reads as one `pipe(data, …)` from `remeda`: the data comes first, then
+the steps it flows through, in order, from input to output. The exported
+function names and orders the steps; it does no logic of its own.
+
+```ts
+export const placeSpawn = (tiles: Tile[][], levelType: LevelType): Tile[][] =>
+  pipe(
+    { tiles, levelType },
+    computeSpawnBounds,
+    filterSpawnCandidates,
+    sortSpawnCandidates,
+    sliceSpawnCandidate,
+    createSpawnPatches,
+    patchSpawnTiles,
+  );
+```
+
+A body that is a single step — one call, one `match`, one object literal — is
+written as that step, because `pipe(x, f)` is only `f(x)`.
 
 Three tools do all of the work:
 
@@ -36,8 +173,19 @@ Three tools do all of the work:
 | `match(x).with(…)…`        | `ts-pattern` | every branch, whether it has two arms or twenty                        |
 | `tryCatch(tryer, catcher)` | `ramda`      | turning a call that can throw into a value                             |
 
-When you see the construct on the left, write the one on the right instead. This
-table is the checklist for a refactor.
+**The one exception.** A block body is allowed only when a function needs
+several named values that are each read more than once, and then it holds
+nothing but `const` declarations and one `return`. Prefer `pipe`.
+
+### 2. No statement-level control flow
+
+**NEVER write a statement where an expression belongs.** `if`, `else`,
+`switch`, `?:`, `for`, `while`, `for…of`, `forEach`, `try`, `catch`, `throw`,
+`let`, `var`, a reassignment, a staircase of intermediate `const`s —
+imperative code of any kind is forbidden in a body.
+
+When you see the construct on the left, write the one on the right instead.
+This table is the checklist for a refactor.
 
 | Imperative construct                                          | Replacement                                                             |
 | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -51,566 +199,1067 @@ table is the checklist for a refactor.
 | `let acc = …; acc = …`                                        | thread the value through `pipe` steps                                   |
 | `const a = …; const b = f(a);`                                | `pipe(a, f, g)`                                                         |
 | `chain(a).thru(f).thru(g).value()`                            | `pipe(a, f, g)`                                                         |
-| `flow(f, g)`, `piped(f, g)`, `compose(g, f)`                  | `(a: A): C => pipe(a, f, g)` (section 3.5)                              |
-| `map(toName)` or any other data-last call                     | `(items) => map(items, toName)` (section 3.5)                           |
+| `flow(f, g)`, `piped(f, g)`, `compose(g, f)`                  | `(a: A): C => pipe(a, f, g)` (rule 8)                                   |
+| `map(toName)` or any other data-last call                     | `(items) => map(items, toName)` (rule 8)                                |
 | `if (x == null) return` guards                                | thread `X \| undefined`, short-circuit with `?.` or lodash `get`        |
 | `() => undefined`                                             | lodash `noop`                                                           |
 | `.length`, `items.map(…)`                                     | `size(…)`, `map(items, …)`                                              |
-| `_.map(…)`, `import _ from 'lodash'`                          | named imports from `lodash-es` (section 10.2)                           |
-| `Object.keys/values/entries`, `JSON.parse(JSON.stringify(x))` | `keys`/`values`/`entries`, `cloneDeep(x)` (section 10.3)                |
-| `typeof x === 'string'`, `Array.isArray(x)`                   | `isString(x)`, `isArray(x)` (section 10.3)                              |
-| `for await`, `await` inside a loop                            | `Promise.all(map(…))`, or a `reduce` over a promise (section 10.10)     |
-| `Math.random()`, `Date.now()`                                 | a generator or clock passed in as an argument (section 7)               |
-
-## 2. Libs, apps, modules and files
-
-1. **Code lives in libs and apps.** Every package in the repository is one or
-   the other: a lib in `libs/<name>/`, an app in `apps/<name>/`. NEVER put
-   source code anywhere else. Libs and apps may be Nx projects, but need not
-   be: the rules are the same in any workspace.
-2. **An app is a finished product built from libs**: a web app, a server, a
-   CLI, a worker — something a person runs or deploys. It holds only what turns
-   the libs into that product: its entry point, the wiring its framework needs
-   (routes, components, handlers, commands) and the edge where IO and rendering
-   happen (sections 5.6, 7.7). The logic it runs lives in libs. An app imports
-   libs through their `index.ts` (rule 6); nothing imports an app. Inside, an
-   app keeps the layout its framework expects, and rules 12–16 apply to every
-   file in it. NEVER put a `types/` folder directly in an app's `src/`:
-   `src/types/` is forbidden, while `src/engine/types/` is fine, because types
-   live next to the code that uses them (rule 10).
-3. **Libs are split by responsibility, and a human decides the split.** Each
-   lib owns one area: a domain (`shop`), the model several domains share
-   (`model`), one outside service (`payments`). Which libs exist is mostly a
-   human's choice, recorded when the guide is adopted (section 16). NEVER
-   create, split, merge or rename a lib on your own: put new code in the lib
-   whose responsibility it serves, and when no lib fits, say so and let a human
-   decide.
-4. **General code goes in the `common` lib.** Base types and general-purpose
-   functions that many libs need and that belong to no lib's own
-   responsibility — `runEffect` (section 5.6), `createRandom` (section 7.3) —
-   live in `libs/common/`. That is the default; a human may give a large shared
-   concern a lib of its own. `common` imports no other lib. NEVER move a
-   function into `common` only because two libs use it: a function that serves
-   one lib's responsibility stays in that lib, and the other lib imports it
-   through that lib's `index.ts`.
-5. **Every lib has one layout:** `src/index.ts` and one folder per module,
-   directly in `src/` (`src/engine/`, `src/checkout/`), with no `modules/`
-   folder around them. Nothing else goes in `src/`. The project files a lib
-   needs (`package.json`, `project.json`, `tsconfig.json`) sit beside `src/`,
-   never in it. NEVER put a `types/` folder directly in `src/`: `src/types/` is
-   forbidden, while `src/engine/types/` is fine, because every type lives
-   inside a module (rule 10).
-
-   ```text
-   apps/
-   └── storefront/                     a finished product built from the libs
-   libs/
-   ├── common/
-   │   └── src/
-   │       ├── index.ts
-   │       ├── effects/                runEffect
-   │       └── random/                 createRandom
-   └── shop/
-       ├── package.json                project files sit beside src/
-       └── src/
-           ├── index.ts                the lib's public API: re-exports only
-           ├── catalog/                one folder per module
-           └── checkout/
-   ```
-
-6. **`src/index.ts` is the lib's barrel and its only way in.** It re-exports,
-   by name, the entry points and types of its own modules that other libs and
-   apps use, and nothing else: no code, no `export *`, no renaming with `as`,
-   nothing from another lib or a package. It is the only file in the
-   repository that re-exports (rule 13).
-
-   ```ts
-   export { getCategories } from './catalog/get-categories';
-   export type { Category } from './catalog/types/category';
-   export { createOrder } from './checkout/create-order';
-   export type { Order } from './checkout/types/order';
-   ```
-
-   Code outside the lib imports only from the barrel, through the path alias
-   (section 10.19): `import { createOrder } from '@acme/shop';`. NEVER reach
-   past it into another lib's modules. NEVER add an `index.ts` anywhere else:
-   a module has no barrel of its own.
-
-7. **Modules are split by responsibility, as finely as the code allows.** Every
-   folder in a lib's `src/` is a module, and a module owns exactly one
-   responsibility: `checkout` places orders, `catalog` lists products. Give
-   each independent responsibility its own module; prefer many small modules
-   to a few large ones, and split a module as soon as it takes on a second
-   responsibility. Unlike libs, modules are yours to create and split. A module
-   depends on as few other modules as it can, and two modules NEVER import from
-   each other, directly or through a chain.
-8. **Every module is laid out the same way:** its entry points at its root, the
-   types they return in `types/`, and everything private in `internal/`:
-
-   ```text
-   libs/shop/src/
-   ├── index.ts
-   ├── catalog/
-   │   ├── get-categories.ts          a module may have several entry points
-   │   ├── filter-featured-products.ts
-   │   ├── slice-for-page.ts
-   │   ├── internal/
-   │   └── types/                     types of the entry points; callers use them
-   │       ├── category.ts
-   │       └── product-group.ts
-   └── checkout/
-       ├── create-order.ts            entry point; index.ts and other modules import it
-       ├── create-order.spec.ts
-       ├── types/
-       │   └── order.ts               what create-order returns
-       └── internal/                  private to checkout/
-           ├── filter-eligible-items.ts
-           ├── filter-eligible-items.spec.ts
-           ├── …
-           └── types/                 types of the functions in internal/
-               ├── eligible-items.ts
-               └── …
-   ```
-
-9. **Files at the root of a module are its entry points.** Code outside the
-   module imports only those and their `types/`. NEVER import from another
-   folder's `internal/`.
-10. **Types get their own file, in the `types/` folder next to the functions
-    that use them.** The types of the entry points go in `types/<name>.ts`; the
-    types of the functions in `internal/` go in `internal/types/<name>.ts`. A
-    type shared by functions in several folders of one module goes in the
-    `types/` folder of the first parent folder they have in common. A type that
-    several modules share belongs to the module whose responsibility it
-    describes, in that module's `types/`, and the others import it from there;
-    a base type that many libs share goes in `common` (rule 4). A `types/`
-    folder never sits above a module (rule 5). NEVER declare a type in a file
-    that holds a function.
-11. **Shared helpers move up a level, but never above a module.** A helper
-    that two folders of one module need in the same form lives in their first
-    common parent folder. A helper that two modules need becomes an entry point
-    of the module whose responsibility it serves — a new module when it serves
-    a responsibility of its own — or moves to `common` when it is general
-    (rule 4). If each caller needs a slightly different version, each keeps its
-    own copy in its `internal/`. NEVER add a flag parameter just so two
-    features can share one function.
-12. **One export per file.** Name the file after its export, in kebab-case:
-    `filterEligibleItems` → `filter-eligible-items.ts`, `ProductCategory` →
-    `product-category.ts`. A lib's `src/index.ts` is the one file with several
-    (rule 6).
-13. **Named exports only, and only of what the file declares.** NEVER use
-    `export default`. NEVER re-export, in any form: no `export … from` or
-    `export type … from`, no import exported again
-    (`import { trim } from 'lodash-es'; export { trim };`), no imported value
-    exported under a new name (`export const formatTitle = startCase;`), and
-    no type that only renames an imported one (`export type Customer = User;`).
-    Callers import a thing from the file that declares it. A lib's
-    `src/index.ts` is the one exception, within the limits of rule 6.
-14. **Every file that exports a function has a spec beside it** with the same
-    base name: `filter-eligible-items.spec.ts`. Files in `internal/` get specs
-    too; `src/index.ts`, which only re-exports, does not.
-15. **Constants.** A tuning value that several files or tests need goes in the
-    nearest `consts.ts`. A value only one file needs is a non-exported
-    `UPPER_SNAKE_CASE` constant at the top of that file:
-    `const RETRY_ROUNDS = 2;`. Name every number whose meaning is not plain
-    from the line it sits on.
-16. **Freeze exported arrays and objects** and type them `readonly`:
-
-    ```ts
-    export const RETRY_DELAYS: readonly number[] = Object.freeze([200, 1_000]);
-    ```
-
-## 3. Functions
-
-1. **Arrow functions only**, assigned to a `const`. NEVER use the `function`
-   keyword, a class, or `this`.
-2. **Single-expression bodies.** Write `(items) => …`, not
-   `(items) => { return …; }`.
-3. **Name a value mid-expression with a `pipe` step**, never with a local:
-
-   ```ts
-   pipe(
-     filter(getNeighbours(grid, row, column), isCountable),
-     (found) => maxBy(uniq(found), (item) => countOf(found, item)),
-     (commonest) => commonest ?? FALLBACK,
-   );
-   ```
-
-4. **Carry extra state forward as an object**, adding one property per step.
-   This is the replacement for a staircase of `const`s; NEVER introduce a `let`.
-
-   ```ts
-   export const parsePayload = (input: Input): Output =>
-     pipe(
-       { raw: getField(input) },
-       ({ raw }) => ({ raw, parsed: parse(raw) }),
-       ({ raw, parsed }) => ({ parsed, patched: patch(parsed, raw) }),
-       ({ patched }) => format(patched),
-     );
-   ```
-
-5. **Data first, always.** `pipe` takes the data as its first argument, and
-   every argument after it is a step: a function of one argument, the output of
-   the step before. Every composition is a `pipe(data, …)`. NEVER compose
-   functions without their data: no lodash `chain` or `flow`, no remeda `piped`,
-   no ramda `pipe` or `compose`. To name a function that _is_ the composition of
-   existing ones, write an arrow that pipes its argument:
-
-   ```ts
-   export const formatName = (name: string): string =>
-     pipe(name, trim, toLower, capitalize);
-   ```
-
-   Pass a function of one argument bare, as `trim` is above. When a step needs
-   more arguments, write an arrow that passes its input first:
-   `(items) => take(items, PAGE_SIZE)`. Every other call is data-first too: the
-   data is the first argument (`map(items, toName)`). NEVER use a curried,
-   data-last form that returns a function waiting for its data — remeda's
-   `map(toName)`, `lodash/fp`, ramda's curried helpers.
-
-   Pipes nest: a step may be an arrow whose body is its own `pipe(…)`.
-
-6. **Extract each meaningful step into its own named function** so the pipe
-   reads as a sentence. Reuse an existing step before writing a new one.
-7. **Block bodies are a narrow exception.** A block body is allowed only when a
-   function needs several named values that are each read more than once, and
-   then it holds nothing but `const` declarations and one `return`. Prefer
-   `pipe`.
-8. **No mutation.** NEVER reassign a name or change an argument. Return new
-   arrays and objects. Copy with `[...items]` or `{ ...record }`. Lodash
-   `reverse` changes the array it is given, so copy first:
-   `reverse([...items])`.
-9. **No loops.** Use lodash `map`, `flatMap`, `filter`, `reduce`, `times` and
-   `range`. For the one kind of measured exception, see section 15.
-10. **Argument order is fixed per domain and never varies.** Pick the order once
-    — the subject the function works on first, then its coordinates, then the
-    injected effects last — and keep it identical in arguments and in object
-    literals: `isSurface(grid, row, column)`, `{ row, column, value }`.
-11. **Entry points and helpers take plain arguments. Pipeline steps take one
-    object** (section 6).
-12. **Return types.** EVERY function in its own file — entry point, pipeline
-    step and helper alike — MUST declare its return type, including
-    `| undefined` variants. NEVER leave it to inference.
-    - **An object is returned as a named interface.** Declare it in the
-      `types/` folder next to the function (section 2.10), one interface per
-      file, and import it with `import type`. NEVER write the object shape
-      inline in the signature.
-    - **Name the interface after the value it describes**, with the feature's
-      name in front, like the steps (section 8.2): `sliceBeartrapCells`
-      returns a `BeartrapSlice`, `createBeartrapPatches` a `BeartrapPatch`.
-    - **Functions may share an interface only when it makes sense in the
-      domain**: when they return the same thing, not merely the same shape.
-      When they live in different folders, the shared interface goes where
-      section 2.10 puts a shared type.
-    - **Anything else declares its type as it is**: `number`, `Tile[][]`,
-      `Layout`, `User | undefined`.
-
-    A step, `create-beartrap-patches.ts`:
-
-    ```ts
-    import { TILE_AIR } from '@mander/model';
-    import { map } from 'lodash-es';
-    import type { BeartrapPatch } from './types/beartrap-patch';
-    import type { BeartrapSlice } from './types/beartrap-slice';
-
-    export const createBeartrapPatches = ({
-      tiles,
-      cells,
-    }: BeartrapSlice): BeartrapPatch => ({
-      tiles,
-      patches: map(cells, ({ row, column }) => ({ row, column, tile: TILE_AIR })),
-    });
-    ```
-
-    Its return type, `types/beartrap-patch.ts`:
-
-    ```ts
-    import type { TILE_AIR } from '@mander/model';
-
-    export interface BeartrapPatch {
-      tiles: number[][];
-      patches: { row: number; column: number; tile: typeof TILE_AIR }[];
-    }
-    ```
-
-    A helper:
-
-    ```ts
-    export const countEarlierCopies = (
-      categories: Category[],
-      index: number,
-    ): number => countOccurrences(take(categories, index), categories[index]);
-    ```
-
-## 4. Branching
-
-1. **`match` from `ts-pattern` does every branch.** There is no arm-count
-   threshold: a two-way `if` and a ten-way `switch` are both a `match`.
-2. **Unions:** one `.with()` per member, ending in `.exhaustive()`:
-
-   ```ts
-   match(layout)
-     .with('HORIZONTAL', () => splitIntoColumns(grid, candidates))
-     .with('VERTICAL', () => splitIntoRows(grid, candidates))
-     .exhaustive();
-   ```
-
-3. **Booleans and other open values:** `.with(true, …)` or `.with(value, …)`,
-   ending in `.otherwise(…)`.
-4. **Destructure every pattern helper off `P` at the top of the file.** NEVER
-   write `P.` in a pattern position — not `P.nullish`, `P.union`, `P.not`,
-   `P.string`, `P.number`, `P.instanceOf`, `P.when`:
-
-   ```ts
-   const { nullish } = P;
-
-   …
-     .with(nullish, () => [])
-     .otherwise((found) => addFiller(found, FILLER, FILL_HEIGHT))
-   ```
-
-5. **Conditions:** use `.when(predicate, handler)`, or a `P` pattern such as
-   `number.lt(0)` after `const { number } = P;`.
-6. **Name special values before you match on them:** `const NOT_FOUND = -1;`,
-   then `.with(NOT_FOUND, () => 0)`.
-7. **Keep unions typed.** When handlers return members of a string union, put
-   the type on the handler: `.with(true, (): Layout => 'VERTICAL')`.
-8. **Shape and type patterns** replace object checks and `instanceof` ladders:
-
-   ```ts
-   const { number, array } = P;
-
-   export const formatStatusLabel = (state: RequestState): string =>
-     match(state)
-       .with({ kind: 'loading' }, () => 'Loading…')
-       .with({ kind: 'error', code: number }, ({ code }) => `Failed (${code})`)
-       .with(
-         { kind: 'ready', items: array() },
-         ({ items }) => `${size(items)} items`,
-       )
-       .exhaustive();
-   ```
-
-9. **Small cases need no `match`.** Use `??` for a fallback
-   (`RETRY_DELAYS[attempt - 1] ?? NO_DELAY`), `?.` for reads that may fall off
-   the structure (`rows[row]?.[column]`), and `&&`, `||` and `!` inside
-   predicates.
-10. **Keep each branch to one call.** When a branch needs more, move it into its
-    own helper file and call that.
-
-## 5. Failure, absence and effects
-
-1. **`tryCatch` from `ramda` replaces `try`/`catch` and `throw`.**
-   `tryCatch(tryer, catcher)` returns a function that runs `tryer`; when it
-   throws, `catcher` receives the error and returns the value the caller
-   continues with. There is no second channel to fold.
-2. **Annotate the `const`** you assign a `tryCatch` to, because its inference is
-   weak, and give the catcher a fallback of the same type as the tryer's result:
-
-   ```ts
-   export const readSettings: () => Settings = tryCatch(
-     () => parseSettings(localStorage.getItem(STORAGE_KEY)),
-     () => createDefaultSettings(),
-   );
-   ```
-
-3. **Normalize an unknown error with `match`**, in its own named helper:
-
-   ```ts
-   const { instanceOf, string } = P;
-
-   const formatErrorMessage = (error: unknown): string =>
-     match(error)
-       .with(instanceOf(Error), (error) => error.message)
-       .with(string, (text) => text)
-       .otherwise(() => 'Unknown error occurred');
-   ```
-
-4. **Async failure folds on the promise.** `tryCatch` is synchronous and cannot
-   catch a rejection. Pass both handlers to `then`:
-
-   ```ts
-   export const tryFetchUser = (id: string): Promise<User | undefined> =>
-     fetchUser(id).then(toUser, (error) => {
-       drawToast(formatErrorMessage(error));
-
-       return undefined;
-     });
-   ```
-
-5. **Thread absence as `X | undefined`** and let later steps short-circuit with
-   `?.` or lodash `get`. NEVER scatter `x == null` guards:
-
-   ```ts
-   export const getPrimaryEmail = (
-     user: User | undefined,
-   ): string | undefined =>
-     pipe(
-       user,
-       (user) => user?.emails,
-       (emails) => emails?.[0],
-     );
-   ```
-
-6. **Side effects live at the edge**, in the outermost handler, never in the
-   middle of a pipe. When a pipe step must run an effect and pass its value on,
-   use a `runEffect` helper of your own:
-
-   ```ts
-   export const runEffect = <T>(value: T, effect: (value: T) => void): T =>
-     match(effect(value)).otherwise(() => value);
-   ```
-
-   and call it as a step: `(scene) => runEffect(scene, drawScene)`. NEVER write
-   a step that returns nothing, such as `(scene) => void drawScene(scene)`:
-   every step after it receives `undefined`.
-
-## 6. Pipelines
-
-A change made in more than one step is a pipeline. Every pipeline has this
-shape.
-
-1. **The entry point** takes plain arguments, packs them into one object and
-   pipes that object through the steps with `pipe` from `remeda`: the object
-   first, then the steps in order. It does nothing else.
-
-   ```ts
-   export const removeExpiredRecords = (
-     records: Record[],
-     now: number,
-   ): Record[] =>
-     pipe(
-       { records, now },
-       computeExpiryWindow,
-       filterExpiredRecords,
-       sortExpiredRecordsRandomly,
-       sliceExpiredRecords,
-       createRemovals,
-       patchRecords,
-     );
-   ```
-
-2. **One step per file**, in `internal/`. A step takes one object, destructures
-   it in its parameter list and returns a new object.
-3. **Step types.** The first step writes its input type inline. Every step
-   returns a named interface from `internal/types/` (section 3.12), and every
-   later step takes the interface the step before it returns, imported with
-   `import type`:
-
-   ```ts
-   import { head } from 'lodash-es';
-   import type { RecordCandidates } from './types/record-candidates';
-   import type { TopRecordCandidate } from './types/top-record-candidate';
-
-   export const getTopRecordCandidate = ({
-     records,
-     candidates,
-   }: RecordCandidates): TopRecordCandidate => ({
-     records,
-     candidate: head(candidates),
-   });
-   ```
-
-4. **Pass on only what later steps read.** Pass each field on unchanged: the
-   same object, not a copy. Drop a field as soon as no later step reads it.
-5. **The last step returns the result itself**, not an object.
-6. **Change data through collected edits.** Describe each change as a value in a
-   `create…` step, then apply them all in the last step, a `patch…` step.
-   NEVER write into the structure you were given; build the new one from the
-   old one and the edits.
-7. **One pipeline per operation, not per variant.** Variants go through the same
-   steps; branch on the variant inside the steps that differ, never in the entry
-   point.
-8. **Name the steps with the verb table** (section 8.6), like every other
-   function. In the recurring shape the walk down the table usually ends at
-   these verbs, in this order: `compute…` the parameters, `filter…` the
-   candidates, `sort…` them (`sort…Randomly` to shuffle), `slice…` the winners,
-   `create…` the edits, `patch…` the data with them.
-
-## 7. Determinism and injected effects
-
-1. **NEVER call an ambient source of truth inside a function that computes.**
-   No `Math.random`, `Date.now`, `new Date()`, `crypto.randomUUID`,
-   `performance.now`, `localStorage`, `process.env`, `fetch`, or logging. Take
-   what you need as an argument. Routing one of these through lodash does not
-   launder it: lodash `random`, `now` and `uniqueId` are ambient in exactly the
-   same way, and this section outranks the lodash-first rule (section 10.5).
-2. **The injected effect is the last argument**, named for what it is (`random`,
-   `now`, `fetchJson`). It is passed down unchanged; NEVER build a second one
-   part-way down.
-3. **One generator per run, created at the outermost entry point**, from an
-   explicit seed, so the same seed MUST always give the same output:
-
-   ```ts
-   export const createWorld = (name: string): World =>
-     pipe(name, createRandom, createTerrain);
-   ```
-
-4. **A pipeline carries the generator as a field** until the last step that
-   draws from it, then drops it.
-5. **The order of the draws is part of the output.** Each draw moves the
-   generator on, so one extra or missing draw anywhere changes everything drawn
-   after it. Treat a reordering as a behaviour change and re-record the
-   expectations.
-6. **Shuffle through the injected generator**:
-   `sortBy(items, () => random())`.
-7. **IO and rendering happen at the edge** — in the handler, the component, the
-   CLI entry — and never inside a step.
-
-## 8. Naming
-
-1. **Case.** `camelCase` for functions and values, `PascalCase` for types,
-   `UPPER_SNAKE_CASE` for module constants and for string-union members
-   (`'HORIZONTAL'`), `kebab-case` for files and folders.
-2. **Steps carry the feature's name**, so no two steps in the repository share a
-   name: `filterOrderCandidates`, never `filterCandidates`. A helper that
-   serves one step may use a shorter name that fits its job.
-3. **Use words, not letters.** Callback parameters say what they hold:
-   `(candidate) => candidate.column`, `(row, index) => …`. NEVER use
-   one-letter names. Name a parameter you do not use `_`.
-4. **One word per concept, repository-wide.** Before you name a value, search
-   the code for the word it already uses for that concept and use exactly that
-   word — never a synonym, never an abbreviation, never `x`/`y` where the code
-   says `row`/`column`. When the code uses two words for one concept, use the
-   more common one. A counter says in its name which way it counts: `…Index`
-   counts from 0, `…Number` from 1 (`pageIndex`, `pageNumber`). Convert at the
-   point of use: `RATES[pageNumber - 1]`.
-5. **Reuse the nouns of existing function names.** The verb comes from rule 6.
-   For the rest of the name, search the code for functions that do similar work
-   and follow their nouns: `filterOrderCandidates` beside `filterOrderItems`,
-   not `filterOrderOptions`.
-6. **Every function name starts with a verb from the verb table below.** The
-   verb is the first part of the name: the name is either the verb alone
-   (`values`, `redraw`) or the verb followed by a word that starts with a
-   capital letter (`isEmpty`, `takeRandomServer`). `issueTicket` does not start
-   with `is`. Choose the verb with this walk:
-   1. Start at the first row of the table and go down one row at a time.
-   2. At each row, read **Means** and **Use when**, and decide whether the verb
-      suits the operation the function performs.
-   3. Use the first verb that suits, and stop. A verb lower in the table never
-      wins over a suitable verb above it, even when it seems a closer fit:
-      `formatStatusLabel`, not `getStatusLabel`, because **format** comes
-      before **get**.
-   4. When no row suits, the function does more than one thing. Split it into
-      steps until each one suits a row.
-
-   Then apply these rules to the name:
-   - NEVER start a name with a word from the **Synonyms** column. Use the verb
-     of its row instead: `readSettings`, not `loadSettings`.
-   - **try** is a prefix, not a verb of its own, and the walk skips its row.
-     Choose the verb with the walk, then put `try` in front when the function
-     returns `undefined` instead of failing: `tryFetchUser`.
-   - The verb always comes first. Where a row shows a form that puts it
-     elsewhere (`sourceToTarget` under **to**) or calls it as a method
-     (`user.clone()`), write a plain function that starts with the verb:
-     `toFahrenheit(celsius)`, `toUser(dto)`, `cloneUser(user)`.
-   - A function in this guide never throws (section 5), so the **throw** row
-     never suits.
-   - The rule covers every function you name: entry points, steps, helpers and
-     spec helpers. Functions imported from a library keep their names (`map`,
-     `pipe`, `match`, `tryCatch`), and so do parameters that receive an
-     injected effect (`random`, `now`, section 7.2).
-
-The verb table. The order of the rows is the order of the walk in rule 8.6.
+| `_.map(…)`, `import _ from 'lodash'`                          | named imports from `lodash-es` (rule 15)                                |
+| `Object.keys/values/entries`, `JSON.parse(JSON.stringify(x))` | `keys`/`values`/`entries`, `cloneDeep(x)` (rule 14)                     |
+| `typeof x === 'string'`, `Array.isArray(x)`                   | `isString(x)`, `isArray(x)` (rule 14)                                   |
+| `for await`, `await` inside a loop                            | `Promise.all(map(…))`, or a `reduce` over a promise (rule 18)           |
+| `Math.random()`, `Date.now()`                                 | a generator or clock passed in as an argument (rule 55)                 |
+
+### 3. Arrow functions only
+
+**Arrow functions only, assigned to a `const`.** NEVER use the `function`
+keyword, a class, or `this`. Write `(items) => …`, not
+`(items) => { return …; }`.
+
+### 4. `match` does every branch
+
+**`match` from `ts-pattern` does every branch.** There is no arm-count
+threshold: a two-way `if` and a ten-way `switch` are both a `match`.
+
+- **Unions:** one `.with()` per member, ending in `.exhaustive()`.
+- **Booleans and other open values:** `.with(true, …)` or `.with(value, …)`,
+  ending in `.otherwise(…)`.
+- **Conditions:** `.when(predicate, handler)`, or a `P` pattern such as
+  `number.lt(0)` after `const { number } = P;` (rule 11).
+- **Shapes and types:** a pattern replaces every object check and every
+  `instanceof` or `typeof` ladder.
+
+```ts
+match(layout)
+  .with('HORIZONTAL', () => splitIntoColumns(grid, candidates))
+  .with('VERTICAL', () => splitIntoRows(grid, candidates))
+  .exhaustive();
+```
+
+```ts
+const { number, array } = P;
+
+export const formatStatusLabel = (state: RequestState): string =>
+  match(state)
+    .with({ kind: 'loading' }, () => 'Loading…')
+    .with({ kind: 'error', code: number }, ({ code }) => `Failed (${code})`)
+    .with(
+      { kind: 'ready', items: array() },
+      ({ items }) => `${size(items)} items`,
+    )
+    .exhaustive();
+```
+
+Keep each branch to one call; when a branch needs more, move it into its own
+helper file and call that. Name special values before you match on them:
+`const NOT_FOUND = -1;`, then `.with(NOT_FOUND, () => 0)`. When handlers
+return members of a string union, put the type on the handler:
+`.with(true, (): Layout => 'VERTICAL')`.
+
+Small cases need no `match`: `??` for a fallback
+(`RETRY_DELAYS[attempt - 1] ?? NO_DELAY`), `?.` for reads that may fall off
+the structure (`rows[row]?.[column]`), and `&&`, `||` and `!` inside
+predicates.
+
+### 5. `tryCatch` replaces `try`, `catch` and `throw`
+
+**`tryCatch` from `ramda` turns a call that can throw into a value.**
+`tryCatch(tryer, catcher)` returns a function that runs `tryer`; when it
+throws, `catcher` receives the error and returns the value the caller
+continues with. There is no second channel to fold, and a function in this
+guide never throws.
+
+```ts
+export const readSettings: () => Settings = tryCatch(
+  () => parseSettings(localStorage.getItem(STORAGE_KEY)),
+  () => createDefaultSettings(),
+);
+```
+
+`tryCatch` is synchronous: a rejection folds on the promise instead (rule 62).
+
+### 6. Never mutate
+
+**NEVER reassign a name or change an argument.** Return new arrays and
+objects. Copy with `[...items]` or `{ ...record }`. Lodash `reverse` changes
+the array it is given, so copy first: `reverse([...items])`. Rule 17 lists the
+other lodash helpers that write into what you hand them.
+
+### 7. No loops
+
+**No loops, and no `forEach`.** Use lodash `map`, `flatMap`, `filter`,
+`reduce`, `times` and `range`. An early exit becomes `find`, `some`, `every`,
+`takeWhile` or `dropWhile`.
+
+`forEach` is banned in both forms — `items.forEach(…)` and
+`forEach(items, …)`: they are statement-level loops that exist only for their
+side effects, and a body holds no side effects (rule 56). This is the one
+place where the lodash-first rule (rule 13) does not extend to the obvious
+helper.
+
+For the one kind of measured exception, see Appendix B.
+
+### 8. Data first, always
+
+**`pipe` takes the data as its first argument, and every argument after it is
+a step**: a function of one argument, the output of the step before.
+
+NEVER compose functions without their data: no lodash `chain` or `flow`, no
+remeda `piped`, no ramda `pipe` or `compose`. To name a function that _is_ the
+composition of existing ones, write an arrow that pipes its argument:
+
+```ts
+export const formatName = (name: string): string =>
+  pipe(name, trim, toLower, capitalize);
+```
+
+Pass a function of one argument bare, as `trim` is above. When a step needs
+more arguments, write an arrow that passes its input first:
+`(items) => take(items, PAGE_SIZE)`.
+
+Every other call is data-first too: the data is the first argument
+(`map(items, toName)`). NEVER use a curried, data-last form that returns a
+function waiting for its data — remeda's `map(toName)`, `lodash/fp`, ramda's
+curried helpers.
+
+Pipes nest: a step may be an arrow whose body is its own `pipe(…)`.
+
+### 9. Carry state forward as an object, never a `let`
+
+**Name a value mid-expression with a `pipe` step**, never with a local:
+
+```ts
+pipe(
+  filter(getNeighbours(grid, row, column), isCountable),
+  (found) => maxBy(uniq(found), (item) => countOf(found, item)),
+  (commonest) => commonest ?? FALLBACK,
+);
+```
+
+**Carry extra state forward as an object**, adding one property per step. This
+is the replacement for a staircase of `const`s; NEVER introduce a `let`.
+
+```ts
+export const parsePayload = (input: Input): Output =>
+  pipe(
+    { raw: getField(input) },
+    ({ raw }) => ({ raw, parsed: parse(raw) }),
+    ({ raw, parsed }) => ({ parsed, patched: patch(parsed, raw) }),
+    ({ patched }) => format(patched),
+  );
+```
+
+### 10. Extract every meaningful step into a named function
+
+**Extract each meaningful step into its own named function** so the pipe reads
+as a sentence. Reuse an existing step before writing a new one.
+
+### 11. Destructure the pattern helpers off `P`
+
+**Destructure every pattern helper off `P` at the top of the file.** NEVER
+write `P.` in a pattern position — not `P.nullish`, `P.union`, `P.not`,
+`P.string`, `P.number`, `P.instanceOf`, `P.when`:
+
+```ts
+const { nullish } = P;
+
+…
+  .with(nullish, () => [])
+  .otherwise((found) => addFiller(found, FILLER, FILL_HEIGHT))
+```
+
+## Part 2 — The vocabulary: four libraries
+
+### 12. One library per job
+
+**Four libraries, one job each.**
+
+| Library      | Its one job                                                             |
+| ------------ | ----------------------------------------------------------------------- |
+| `lodash-es`  | iteration, collections, objects, strings, numbers, cloning, type checks |
+| `remeda`     | `pipe`, and nothing else                                                |
+| `ts-pattern` | `match` and `P` — all branching                                         |
+| `ramda`      | `tryCatch`, and nothing else                                            |
+
+Do not add a second library for any of these jobs; write a small named helper
+over them instead. Do not take a helper from one of them for another's job:
+NEVER import remeda's `map` beside lodash's. Dates are the one gap a fifth
+library fills (rule 23).
+
+### 13. `lodash-es` for everything it covers
+
+**lodash is the single vocabulary for iteration, collections, objects,
+strings, numbers, cloning and type checks.** A native construct appears only
+where rule 14 names it.
+
+Call lodash helpers as functions and import them by name: `map(items, …)`,
+`size(items)`, `head(items)`. NEVER call array methods (`items.map(…)`) and
+NEVER read `.length`; use `size()`. Reach for a lodash helper before writing
+one of your own.
+
+### 14. The native-to-lodash replacement table
+
+Each native construct on the left is replaced by the lodash helper on the
+right.
+
+| Native                                                                                     | lodash                                                                                                       |
+| ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| `for`, `while`, `for…of`, `for…in`, `.forEach`                                             | `map`, `filter`, `reduce`, `times`, `range` — never `forEach` (rule 7)                                       |
+| `.map`, `.filter`, `.reduce`, `.find`, `.some`, `.every`, `.includes`, `.flatMap`, `.sort` | `map`, `filter`, `reduce`, `find`, `some`, `every`, `includes`, `flatMap`, `sortBy`                          |
+| `a && a.b && a.b.c`                                                                        | `get(a, 'b.c')`                                                                                              |
+| `Object.prototype.hasOwnProperty.call(obj, 'id')`                                          | `has(obj, 'id')`                                                                                             |
+| `const { password, ...safe } = user`                                                       | `omit(user, ['password'])`, `pick(user, [...])`                                                              |
+| `Object.keys` / `.values` / `.entries`                                                     | `keys` / `values` / `entries` (alias `toPairs`)                                                              |
+| `str.trim()`, `str.charAt(0).toUpperCase() + …`                                            | `trim(str)`, `upperFirst(str)`                                                                               |
+| hand-rolled case conversion                                                                | `camelCase`, `kebabCase`, `snakeCase`, `startCase`, `capitalize`, `lowerCase`, `pad`, `truncate`, `repeat`   |
+| `Math.round`, `Math.floor`, `Math.ceil`                                                    | `round`, `floor`, `ceil`                                                                                     |
+| `Math.max(...nums)`, `Math.min(...nums)`                                                   | `max(nums)`, `min(nums)`; also `clamp`, `inRange`, `sum`                                                     |
+| `JSON.parse(JSON.stringify(obj))`                                                          | `cloneDeep(obj)`                                                                                             |
+| `Object.assign({}, a, b)`, `{ ...a, ...b }`                                                | `assign({}, a, b)`; `merge({}, a, b)` when the merge is deep                                                 |
+| `Array.isArray(x)`, `typeof x === 'string'`                                                | `isArray(x)`, `isString(x)`                                                                                  |
+| `x === null \|\| x === undefined`                                                          | `isNil(x)`; also `isEmpty`, `isUndefined`, `isNumber`, `isBoolean`, `isFunction`, `isPlainObject`, `isEqual` |
+| an accumulator loop building a lookup                                                      | `keyBy`, `groupBy`, `countBy`, `uniqBy`, `compact`                                                           |
+| `Date.now()`                                                                               | `now()` — at the edge only (rule 55)                                                                         |
+
+### 15. Import every library function by name
+
+- One `import { … } from 'lodash-es';` per file, kept in sync with the helpers
+  actually used.
+- NEVER `import _ from 'lodash-es'`, NEVER `import * as _ from 'lodash-es'`,
+  NEVER a `_.`-prefixed call. The `_` namespace does not appear in source. (A
+  bare `_` as the name of an unused parameter is a different thing and stays
+  allowed — rule 69.)
+- NEVER the CommonJS `lodash` package, and NEVER `require('lodash')`. If a
+  file still has either, replace it with named `lodash-es` imports and leave
+  nothing behind.
+- The same holds for ramda: NEVER `import * as R from 'ramda'`, NEVER
+  `R.tryCatch`.
+- `lodash-es` ships no types: `@types/lodash-es` MUST be a dev dependency, or
+  the named imports do not type-check.
+
+### 16. `pipe` comes from `remeda`, and nothing else does
+
+Import it by name, `import { pipe } from 'remeda';`, and import nothing else
+from `remeda`: lodash already covers collections (rule 13), and remeda's
+data-last forms break the data-first rule (rule 8). NEVER import `chain`,
+`flow`, `flowRight` or `thru` from `lodash-es`, `piped` from `remeda`, or
+`pipe` or `compose` from `ramda`.
+
+### 17. Mutating lodash helpers are banned; the fresh-target forms are not
+
+`merge` and `assign` write into their first argument, so the first argument
+MUST be a new literal: `assign({}, a, b)` and `merge({}, a, b)` are fine,
+`assign(target, source)` and `merge(target, source)` are not. NEVER use `set`,
+`unset`, `pull`, `remove`, `fill` or `reverse` on a value you were given;
+build the new value instead (`{ ...record, [key]: value }`,
+`reverse([...items])`). `cloneDeep` replaces every hand-rolled deep copy.
+
+### 18. Async stays out of the collection helpers
+
+No lodash helper awaits anything: `forEach` and `map` ignore returned
+promises. Run independent work with `Promise.all(map(items, fetchItem))`;
+sequence dependent work by folding with `reduce` over a promise:
+
+```ts
+reduce(items, (done, item) => done.then(() => handle(item)), Promise.resolve());
+```
+
+NEVER write `for await` or an `await` inside a loop in a body.
+
+### 19. `sortBy` is stable, and tests depend on it
+
+It keeps tied items in their old order. Sort from high to low by negating the
+key (`(candidate) => -candidate.column`). Break ties with a list of keys:
+
+```ts
+sortBy(candidates, [
+  (candidate) => candidate.row,
+  (candidate) => Math.abs(candidate.column - computeMiddleColumn(grid)),
+]);
+```
+
+`sortBy` returns a new array; `reverse` does not, so copy first.
+
+### 20. Arithmetic goes through lodash
+
+Use lodash `floor`, `ceil`, `round`, `sum`, `clamp` and `inRange`, and lodash
+`max` and `min` on arrays. `Math` keeps only the scalar cases lodash does not
+cover: `Math.abs`, and `Math.min`/`Math.max` on two single numbers.
+
+### 21. Prefer the arrow over the property shorthand
+
+`map(users, 'name')` type-checks but infers loosely;
+`map(users, (user) => user.name)` keeps the tighter type. Use the shorthand
+only where the inferred type is still exact, and add explicit type arguments
+where inference degrades.
+
+### 22. lodash type guards narrow
+
+They compose with `match`: `.when(isString, …)`. Inside a `match`, prefer the
+`P` pattern (`string`, `number`, `array()`); use a lodash guard where you need
+it outside a pattern position, or inside `.when`. After each swap, confirm the
+narrowed type still satisfies the code downstream.
+
+### 23. Dates are not lodash's job
+
+Beyond `now()`, lodash has no date surface. NEVER invent a lodash date helper
+or force arithmetic through `add`/`subtract` where real date semantics are
+meant; take a date library (`date-fns`, `dayjs`) and say so.
+
+### 24. `pipe` takes at most 15 steps
+
+`pipe` is typed for at most 15 steps after the data; the type checker rejects
+a sixteenth. When a pipeline needs more, group a run of its steps into a named
+step whose body is its own `pipe`.
+## Part 3 — Pipelines
+
+A change made in more than one step is a pipeline. Every pipeline in the
+repository has the same shape.
+
+### 25. A change made in more than one step is a pipeline
+
+**The entry point takes plain arguments, packs them into one object and pipes
+that object through the steps** with `pipe` from `remeda`: the object first,
+then the steps in order. It does nothing else. Entry points and helpers take
+plain arguments; pipeline steps take one object.
+
+```ts
+export const removeExpiredRecords = (
+  records: Record[],
+  now: number,
+): Record[] =>
+  pipe(
+    { records, now },
+    computeExpiryWindow,
+    filterExpiredRecords,
+    sortExpiredRecordsRandomly,
+    sliceExpiredRecords,
+    createRemovals,
+    patchRecords,
+  );
+```
+
+### 26. One step per file, in `internal/`
+
+A step takes one object, destructures it in its parameter list and returns a
+new object.
+
+### 27. Each step takes the interface the step before it returns
+
+The first step writes its input type inline. Every step returns a named
+interface from `internal/types/` (rule 47), and every later step takes the
+interface the step before it returns, imported with `import type`:
+
+```ts
+import { head } from 'lodash-es';
+import type { RecordCandidates } from './types/record-candidates';
+import type { TopRecordCandidate } from './types/top-record-candidate';
+
+export const getTopRecordCandidate = ({
+  records,
+  candidates,
+}: RecordCandidates): TopRecordCandidate => ({
+  records,
+  candidate: head(candidates),
+});
+```
+
+### 28. Change data through collected edits
+
+Describe each change as a value in a `create…` step, then apply them all in
+the last step, a `patch…` step. NEVER write into the structure you were given;
+build the new one from the old one and the edits.
+
+### 29. Pass on only what later steps read
+
+Pass each field on unchanged: the same object, not a copy. Drop a field as
+soon as no later step reads it.
+
+### 30. The last step returns the result itself
+
+Not an object.
+
+### 31. One pipeline per operation, not per variant
+
+Variants go through the same steps; branch on the variant inside the steps
+that differ, never in the entry point.
+
+### 32. The step verbs come in a fixed order
+
+Name the steps with the verb table (rule 65), like every other function. In
+the recurring shape the walk down the table usually ends at these verbs, in
+this order: `compute…` the parameters, `filter…` the candidates, `sort…` them
+(`sort…Randomly` to shuffle), `slice…` the winners, `create…` the edits,
+`patch…` the data with them.
+
+## Part 4 — Where code lives
+
+### 33. Code lives in libs and apps
+
+Every package in the repository is one or the other: a lib in `libs/<name>/`,
+an app in `apps/<name>/`. NEVER put source code anywhere else. Libs and apps
+may be Nx projects, but need not be: the rules are the same in any workspace.
+
+**An app is a finished product built from libs**: a web app, a server, a CLI,
+a worker — something a person runs or deploys. It holds only what turns the
+libs into that product: its entry point, the wiring its framework needs
+(routes, components, handlers, commands) and the edge where IO and rendering
+happen (rule 56). The logic it runs lives in libs. An app imports libs through
+their `index.ts` (rule 36); nothing imports an app. Inside, an app keeps the
+layout its framework expects, and every rule in this guide applies to every
+file in it. NEVER put a `types/` folder directly in an app's `src/`:
+`src/types/` is forbidden, while `src/engine/types/` is fine, because types
+live next to the code that uses them (rule 41).
+
+### 34. Libs are split by responsibility, and a human decides the split
+
+Each lib owns one area: a domain (`shop`), the model several domains share
+(`model`), one outside service (`payments`). Which libs exist is mostly a
+human's choice, recorded when the guide is adopted (Appendix E). NEVER create,
+split, merge or rename a lib on your own: put new code in the lib whose
+responsibility it serves, and when no lib fits, say so and let a human decide.
+
+### 35. Every lib has one layout
+
+`src/index.ts` and one folder per module, directly in `src/` (`src/engine/`,
+`src/checkout/`), with no `modules/` folder around them. Nothing else goes in
+`src/`. The project files a lib needs (`package.json`, `project.json`,
+`tsconfig.json`) sit beside `src/`, never in it. NEVER put a `types/` folder
+directly in `src/`: `src/types/` is forbidden, while `src/engine/types/` is
+fine, because every type lives inside a module (rule 41).
+
+```text
+apps/
+└── storefront/                     a finished product built from the libs
+libs/
+├── common/
+│   └── src/
+│       ├── index.ts
+│       ├── effects/                runEffect
+│       └── random/                 createRandom
+└── shop/
+    ├── package.json                project files sit beside src/
+    └── src/
+        ├── index.ts                the lib's public API: re-exports only
+        ├── catalog/                one folder per module
+        └── checkout/
+```
+
+### 36. `src/index.ts` is the lib's barrel and its only way in
+
+It re-exports, by name, the entry points and types of its own modules that
+other libs and apps use, and nothing else: no code, no `export *`, no renaming
+with `as`, nothing from another lib or a package. It is the only file in the
+repository that re-exports (rule 40).
+
+```ts
+export { getCategories } from './catalog/get-categories';
+export type { Category } from './catalog/types/category';
+export { createOrder } from './checkout/create-order';
+export type { Order } from './checkout/types/order';
+```
+
+Code outside the lib imports only from the barrel, through the path alias
+(rule 45): `import { createOrder } from '@acme/shop';`. NEVER reach past it
+into another lib's modules. NEVER add an `index.ts` anywhere else: a module
+has no barrel of its own.
+
+### 37. Modules are split by responsibility, as finely as the code allows
+
+Every folder in a lib's `src/` is a module, and a module owns exactly one
+responsibility: `checkout` places orders, `catalog` lists products. Give each
+independent responsibility its own module; prefer many small modules to a few
+large ones, and split a module as soon as it takes on a second responsibility.
+Unlike libs, modules are yours to create and split. A module depends on as few
+other modules as it can, and two modules NEVER import from each other,
+directly or through a chain.
+
+### 38. Every module is laid out the same way
+
+Its entry points at its root, the types they return in `types/`, and
+everything private in `internal/`:
+
+```text
+libs/shop/src/
+├── index.ts
+├── catalog/
+│   ├── get-categories.ts          a module may have several entry points
+│   ├── filter-featured-products.ts
+│   ├── slice-for-page.ts
+│   ├── internal/
+│   └── types/                     types of the entry points; callers use them
+│       ├── category.ts
+│       └── product-group.ts
+└── checkout/
+    ├── create-order.ts            entry point; index.ts and other modules import it
+    ├── create-order.spec.ts
+    ├── types/
+    │   └── order.ts               what create-order returns
+    └── internal/                  private to checkout/
+        ├── filter-eligible-items.ts
+        ├── filter-eligible-items.spec.ts
+        ├── …
+        └── types/                 types of the functions in internal/
+            ├── eligible-items.ts
+            └── …
+```
+
+**Files at the root of a module are its entry points.** Code outside the
+module imports only those and their `types/`. NEVER import from another
+folder's `internal/`.
+
+### 39. One export per file
+
+Name the file after its export, in kebab-case: `filterEligibleItems` →
+`filter-eligible-items.ts`, `ProductCategory` → `product-category.ts`. A lib's
+`src/index.ts` is the one file with several (rule 36).
+
+### 40. Named exports only, and never a re-export
+
+NEVER use `export default`. NEVER re-export, in any form: no `export … from`
+or `export type … from`, no import exported again
+(`import { trim } from 'lodash-es'; export { trim };`), no imported value
+exported under a new name (`export const formatTitle = startCase;`), and no
+type that only renames an imported one (`export type Customer = User;`).
+
+Export only what the file declares; callers import a thing from the file that
+declares it. A lib's `src/index.ts` is the one exception, within the limits of
+rule 36.
+
+### 41. Every type gets its own file, in `types/`
+
+Types live in the `types/` folder next to the functions that use them. The
+types of the entry points go in `types/<name>.ts`; the types of the functions
+in `internal/` go in `internal/types/<name>.ts`.
+
+A type shared by functions in several folders of one module goes in the
+`types/` folder of the first parent folder they have in common. A type that
+several modules share belongs to the module whose responsibility it describes,
+in that module's `types/`, and the others import it from there; a base type
+that many libs share goes in `common` (rule 43). A `types/` folder never sits
+above a module (rule 35).
+
+NEVER declare a type in a file that holds a function.
+
+### 42. Every file that exports a function has a spec beside it
+
+With the same base name: `filter-eligible-items.spec.ts`. Files in `internal/`
+get specs too; `src/index.ts`, which only re-exports, does not.
+
+### 43. General code goes in the `common` lib
+
+Base types and general-purpose functions that many libs need and that belong
+to no lib's own responsibility — `runEffect` (rule 56), `createRandom`
+(rule 58) — live in `libs/common/`. That is the default; a human may give a
+large shared concern a lib of its own. `common` imports no other lib.
+
+NEVER move a function into `common` only because two libs use it: a function
+that serves one lib's responsibility stays in that lib, and the other lib
+imports it through that lib's `index.ts`.
+
+### 44. Shared helpers move up a level, but never above a module
+
+A helper that two folders of one module need in the same form lives in their
+first common parent folder. A helper that two modules need becomes an entry
+point of the module whose responsibility it serves — a new module when it
+serves a responsibility of its own — or moves to `common` when it is general
+(rule 43). If each caller needs a slightly different version, each keeps its
+own copy in its `internal/`.
+
+NEVER add a flag parameter just so two features can share one function.
+
+### 45. Import across a boundary through the alias, inside it by relative path
+
+Imports across lib and app boundaries use the repository's path aliases and
+land on a lib's `src/index.ts` (rule 36). Imports inside a lib or an app use
+relative paths, spelled the way its neighbours spell them (with or without the
+file extension — pick one per repository).
+
+## Part 5 — Signatures and types
+
+### 46. Every function declares its return type
+
+**EVERY function in its own file — entry point, pipeline step and helper
+alike — MUST declare its return type**, including `| undefined` variants.
+NEVER leave it to inference.
+
+Anything that is not an object declares its type as it is: `number`,
+`Tile[][]`, `Layout`, `User | undefined`.
+
+```ts
+export const countEarlierCopies = (
+  categories: Category[],
+  index: number,
+): number => countOccurrences(take(categories, index), categories[index]);
+```
+
+### 47. An object is returned as a named interface
+
+Declare it in the `types/` folder next to the function (rule 41), one
+interface per file, and import it with `import type`. NEVER write the object
+shape inline in the signature.
+
+**Name the interface after the value it describes**, with the feature's name in
+front, like the steps (rule 67): `sliceBeartrapCells` returns a
+`BeartrapSlice`, `createBeartrapPatches` a `BeartrapPatch`.
+
+**Functions may share an interface only when it makes sense in the domain**:
+when they return the same thing, not merely the same shape. When they live in
+different folders, the shared interface goes where rule 41 puts a shared type.
+
+A step, `create-beartrap-patches.ts`:
+
+```ts
+import { TILE_AIR } from '@mander/model';
+import { map } from 'lodash-es';
+import type { BeartrapPatch } from './types/beartrap-patch';
+import type { BeartrapSlice } from './types/beartrap-slice';
+
+export const createBeartrapPatches = ({
+  tiles,
+  cells,
+}: BeartrapSlice): BeartrapPatch => ({
+  tiles,
+  patches: map(cells, ({ row, column }) => ({ row, column, tile: TILE_AIR })),
+});
+```
+
+Its return type, `types/beartrap-patch.ts`:
+
+```ts
+import type { TILE_AIR } from '@mander/model';
+
+export interface BeartrapPatch {
+  tiles: number[][];
+  patches: { row: number; column: number; tile: typeof TILE_AIR }[];
+}
+```
+
+### 48. A property holds data, never a function
+
+An `interface` or a `type` describes the values that flow through a pipeline;
+the behaviour lives in the named functions the pipeline composes (rule 1). A
+function-valued property — `format: (order: Order) => string`,
+`onDone: () => void`, a `deps`/`service`/`handlers` bag — hides code inside a
+value: the reader cannot see which implementation the field holds, the value
+stops being comparable, serialisable and printable in a spec, and the object
+takes on behaviour that belongs to the functions around it. This is the worst
+shape a type takes in this style, and it spreads: one callback field pulls in
+the next.
+
+**Every interface or type with a function-typed property is refactored on
+sight**, whatever work brought you to the file.
+
+```ts
+// NEVER
+export interface OrderFormatter {
+  locale: string;
+  format: (order: Order) => string;
+}
+
+// Instead
+export interface OrderFormat {
+  locale: string;
+}
+
+export const formatOrder = (order: Order, { locale }: OrderFormat): string =>
+  formatAmount(order.total, locale);
+```
+
+Four moves cover every case:
+
+- **One behaviour field.** Delete it and call the named function directly
+  where the field was read.
+- **A bag of functions** (`deps`, `service`, `handlers`, `adapter`). Pass each
+  function as its own argument, named for what it is, the injected ones last
+  (rule 57).
+- **A field that picks between known behaviours.** Store the choice as a
+  string union and `match` on it inside the function (rules 4 and 50).
+- **A callback the caller supplies.** Make it a parameter of the function, not
+  a field of the data the function takes.
+
+A standalone function type for an argument
+(`export type Random = () => number;`) is a different thing and stays allowed
+— rule 51 names it; this rule is about properties. Two shapes are not yours to
+choose, and they are the only ones that stay:
+
+- **A framework's own callback API** — React props (`onClick`, `onChange`, a
+  render prop), a hook's argument, an option object a third-party library
+  defines. Keep the shape the framework requires, pass a named function rather
+  than an inline body, and keep that type in the boundary file that talks to
+  the framework; it never travels inward into the types the pipeline carries.
+- **The injected effect a pipeline threads** (rule 59): the generator or clock
+  the entry point created, carried as one field named for the effect, passed
+  on unchanged and dropped at the last step that draws from it.
+
+### 49. Never `any`, `!`, `@ts-ignore` or `as`
+
+NEVER use `any`, non-null assertions (`!`), `@ts-ignore`, `@ts-expect-error`
+or `as` casts in source files. Specs get one narrow allowance (rule 78).
+
+### 50. String unions for fixed sets of values
+
+NEVER use `enum`.
+
+### 51. `interface` for object shapes, `type` for everything else
+
+`type` covers unions, aliases, records and function types:
+
+```ts
+export interface Spot {
+  row: number;
+  column: number;
+}
+
+export type Category = 'NORMAL' | 'HARD' | 'BONUS';
+
+export type CategoryGroups = Record<Category, Item[]>;
+```
+
+### 52. Argument order is fixed per domain and never varies
+
+Pick the order once — the subject the function works on first, then its
+coordinates, then the injected effects last — and keep it identical in
+arguments and in object literals: `isSurface(grid, row, column)`,
+`{ row, column, value }`.
+
+### 53. Reuse a type instead of writing it out again
+
+The interface the previous step returns for a step's input (rule 27), the type
+`createRandom` returns for an injected generator, `Parameters<typeof fn>` for
+a wrapper. NEVER use `ReturnType<typeof …>` where the function already
+declares a named return type (rule 46).
+
+### 54. Import types as types
+
+`import type { Item } from './types/item';`, or
+`import { type Item, EMPTY_ITEM } from './types/item';` when one line brings
+in both. Turn on `verbatimModuleSyntax` so the compiler checks it.
+
+## Part 6 — Effects, failure and absence
+
+### 55. Never call an ambient source of truth inside a function that computes
+
+No `Math.random`, `Date.now`, `new Date()`, `crypto.randomUUID`,
+`performance.now`, `localStorage`, `process.env`, `fetch`, or logging. Take
+what you need as an argument.
+
+Routing one of these through lodash does not launder it: lodash `random`,
+`now` and `uniqueId` are ambient in exactly the same way, and this rule
+outranks the lodash-first rule (rule 13). Use `now()` only where the clock
+itself is created, at the edge.
+
+### 56. Side effects, IO and rendering live at the edge
+
+In the outermost handler, the component, the CLI entry — never in the middle
+of a pipe, and never inside a step. When a pipe step must run an effect and
+pass its value on, use a `runEffect` helper of your own:
+
+```ts
+export const runEffect = <T>(value: T, effect: (value: T) => void): T =>
+  match(effect(value)).otherwise(() => value);
+```
+
+and call it as a step: `(scene) => runEffect(scene, drawScene)`. NEVER write a
+step that returns nothing, such as `(scene) => void drawScene(scene)`: every
+step after it receives `undefined`.
+
+### 57. The injected effect is the last argument
+
+Named for what it is (`random`, `now`, `fetchJson`). It is passed down
+unchanged; NEVER build a second one part-way down.
+
+### 58. One generator per run, created from an explicit seed
+
+Created at the outermost entry point, so the same seed MUST always give the
+same output:
+
+```ts
+export const createWorld = (name: string): World =>
+  pipe(name, createRandom, createTerrain);
+```
+
+Shuffle through the injected generator: `sortBy(items, () => random())`.
+
+### 59. A pipeline carries the generator as a field
+
+Until the last step that draws from it, then drops it (rule 29).
+
+### 60. The order of the draws is part of the output
+
+Each draw moves the generator on, so one extra or missing draw anywhere
+changes everything drawn after it. Treat a reordering as a behaviour change
+and re-record the expectations.
+
+### 61. Thread absence as `X | undefined`
+
+Let later steps short-circuit with `?.` or lodash `get`. NEVER scatter
+`x == null` guards:
+
+```ts
+export const getPrimaryEmail = (user: User | undefined): string | undefined =>
+  pipe(
+    user,
+    (user) => user?.emails,
+    (emails) => emails?.[0],
+  );
+```
+
+### 62. Async failure folds on the promise
+
+`tryCatch` is synchronous and cannot catch a rejection. Pass both handlers to
+`then`:
+
+```ts
+export const tryFetchUser = (id: string): Promise<User | undefined> =>
+  fetchUser(id).then(toUser, (error) => {
+    drawToast(formatErrorMessage(error));
+
+    return undefined;
+  });
+```
+
+### 63. Annotate the `const` a `tryCatch` goes into
+
+Its inference is weak, so write the type out
+(`export const readSettings: () => Settings = tryCatch(…)`, rule 5), and give
+the catcher a fallback of the same type as the tryer's result.
+
+### 64. Normalize an unknown error with `match`
+
+In its own named helper:
+
+```ts
+const { instanceOf, string } = P;
+
+const formatErrorMessage = (error: unknown): string =>
+  match(error)
+    .with(instanceOf(Error), (error) => error.message)
+    .with(string, (text) => text)
+    .otherwise(() => 'Unknown error occurred');
+```
+## Part 7 — Naming
+
+### 65. Every function name starts with a verb from the verb table
+
+The verb table is Appendix A. The verb is the first part of the name: the name
+is either the verb alone (`values`, `redraw`) or the verb followed by a word
+that starts with a capital letter (`isEmpty`, `takeRandomServer`).
+`issueTicket` does not start with `is`.
+
+Choose the verb with this walk:
+
+1. Start at the first row of the table and go down one row at a time.
+2. At each row, read **Means** and **Use when**, and decide whether the verb
+   suits the operation the function performs.
+3. Use the first verb that suits, and stop. A verb lower in the table never
+   wins over a suitable verb above it, even when it seems a closer fit:
+   `formatStatusLabel`, not `getStatusLabel`, because **format** comes before
+   **get**.
+4. When no row suits, the function does more than one thing. Split it into
+   steps until each one suits a row.
+
+Then apply these rules to the name:
+
+- NEVER start a name with a word from the **Synonyms** column. Use the verb of
+  its row instead: `readSettings`, not `loadSettings`.
+- **try** is a prefix, not a verb of its own, and the walk skips its row.
+  Choose the verb with the walk, then put `try` in front when the function
+  returns `undefined` instead of failing: `tryFetchUser`.
+- The verb always comes first. Where a row shows a form that puts it elsewhere
+  (`sourceToTarget` under **to**) or calls it as a method (`user.clone()`),
+  write a plain function that starts with the verb: `toFahrenheit(celsius)`,
+  `toUser(dto)`, `cloneUser(user)`.
+- A function in this guide never throws (rule 5), so the **throw** row never
+  suits.
+- The rule covers every function you name: entry points, steps, helpers and
+  spec helpers. Functions imported from a library keep their names (`map`,
+  `pipe`, `match`, `tryCatch`), and so do parameters that receive an injected
+  effect (`random`, `now`, rule 57).
+
+### 66. One word per concept, repository-wide
+
+Before you name a value, search the code for the word it already uses for that
+concept and use exactly that word — never a synonym, never an abbreviation,
+never `x`/`y` where the code says `row`/`column`. When the code uses two words
+for one concept, use the more common one.
+
+A counter says in its name which way it counts: `…Index` counts from 0,
+`…Number` from 1 (`pageIndex`, `pageNumber`). Convert at the point of use:
+`RATES[pageNumber - 1]`.
+
+### 67. Steps carry the feature's name
+
+So no two steps in the repository share a name: `filterOrderCandidates`, never
+`filterCandidates`. A helper that serves one step may use a shorter name that
+fits its job.
+
+### 68. Reuse the nouns of existing function names
+
+The verb comes from rule 65. For the rest of the name, search the code for
+functions that do similar work and follow their nouns:
+`filterOrderCandidates` beside `filterOrderItems`, not `filterOrderOptions`.
+
+### 69. Use words, not letters
+
+Callback parameters say what they hold: `(candidate) => candidate.column`,
+`(row, index) => …`. NEVER use one-letter names. Name a parameter you do not
+use `_`.
+
+### 70. Case
+
+`camelCase` for functions and values, `PascalCase` for types,
+`UPPER_SNAKE_CASE` for module constants and for string-union members
+(`'HORIZONTAL'`), `kebab-case` for files and folders.
+
+## Part 8 — Tests
+
+Every rule in this guide applies to specs too, except where rule 78 names the
+difference.
+
+### 71. One runner, and no test machinery
+
+Import the runner by name. With Vitest:
+`import { describe, expect, it } from 'vitest';`.
+
+NEVER use mocks, spies, `beforeEach`, `afterEach`, snapshots, `.only`,
+`.skip` or `it.each`. A body that takes its effects as arguments (rule 57)
+needs no mock: pass a stub function.
+
+### 72. Test every step on its own
+
+Every step in `internal/` has its own spec. The entry point's spec checks the
+feature as a whole.
+
+### 73. Every spec covers this list
+
+- the main behaviour, and the empty case (an empty collection, no candidates);
+- for a pipeline step: one test for each field it passes on, using `toBe` to
+  show the same object came back;
+- for an entry point or a `patch…` step: that the input it was given is
+  unchanged (`'should not change the old basket when …'`);
+- for anything that draws from an injected generator: the same seed gives the
+  same result, and another seed gives a different one. Give each call its own
+  `createRandom(seed)`, because a shared generator moves on with every draw. A
+  step that only passes the generator on may share one `RANDOM` constant
+  across its tests;
+- for anything that branches on a variant: every member of the union;
+- for anything wrapped in `tryCatch`: that the failing path returns the
+  fallback.
+
+### 74. One `describe` per file, named exactly after the function
+
+`describe('getTopCandidate', …)`. Only a spec that checks behaviour across
+several features uses a plain-English title.
+
+### 75. Titles read `should … when …`
+
+In plain everyday English about the domain, not the code. Call the function
+"it". Say "the basket", "the spots" and "the edits", not `items`, `cells` and
+`patches`:
+
+- `'should keep the basket the same when it collects the edits'`
+- `'should give no spots when the page holds no slot'`
+- `'should charge the reduced price when the order clears the free-shipping threshold'`
+
+### 76. Fixtures are constants, factories and legends
+
+- Shared read-only fixtures are `UPPER_SNAKE_CASE` constants:
+  `const BASKET: Item[] = [ITEM_APPLE];`
+- When a test checks that the input is left alone, build the fixture with a
+  factory so every call makes a fresh one: `createBasket()`.
+- Write a bulky fixture in compact literal notation and expand it through a
+  legend, so the test reads as the thing it describes:
+
+  ```ts
+  const CELLS: Record<string, Cell> = {
+    '#': CELL_WALL,
+    o: CELL_COIN,
+    P: CELL_EXIT,
+  };
+
+  const createGrid = (rows: string[]): Cell[][] =>
+    map(rows, (row) => map([...row], (cell) => CELLS[cell] ?? CELL_EMPTY));
+  ```
+
+- Wrap the call in a helper that returns only the field under test:
+
+  ```ts
+  const filterCandidates = (rows: string[], layout: Layout) =>
+    filterGridCandidates({ grid: createGrid(rows), layout }).candidates;
+  ```
+
+### 77. Assertions
+
+`toEqual` for values. `toBe` for primitives and to show the same object came
+back. `toBeCloseTo` for fractions. When you check many cases inside
+`times(…)`, pass a message so a failure names the case:
+``expect(cleared, `round ${round}`)``.
+
+### 78. What a spec may do that a source file may not
+
+Cast with `as unknown as` to build a fixture that is hard to type, write into
+a fixture it has just made, collect calls in a local array
+(`offsets.push(offset)`), and declare small local types. Nothing else.
+
+### 79. A slow test carries its own timeout
+
+A test that needs more than the default time passes a timeout as the third
+argument of `it`: `120000`.
+
+## Part 9 — Constants, layout and comments
+
+### 80. No comments
+
+Names and tests explain the code. The only comments allowed are tool
+directives, the note on each exception in Appendix B, and the public JSDoc of
+rule 81.
+
+### 81. Keep public JSDoc when refactoring
+
+When you refactor a codebase that documents its public API with JSDoc — a
+`/** … */` block on an exported function, type or constant — NEVER remove
+those comments. Callers read them in their editors and documentation tools.
+Keep each one on the export it documents. If the refactor changes the
+signature, for example by injecting an effect as a new argument (rule 57),
+update the comment to match.
+
+### 82. Name every unexplained number
+
+A tuning value that several files or tests need goes in the nearest
+`consts.ts`. A value only one file needs is a non-exported `UPPER_SNAKE_CASE`
+constant at the top of that file: `const RETRY_ROUNDS = 2;`. Name every number
+whose meaning is not plain from the line it sits on.
+
+### 83. Freeze exported arrays and objects
+
+And type them `readonly`:
+
+```ts
+export const RETRY_DELAYS: readonly number[] = Object.freeze([200, 1_000]);
+```
+
+### 84. Import order
+
+Package imports first, then relative imports. Sort each group by path.
+
+### 85. Blank lines
+
+Source files have no blank line between the two import groups; spec files have
+exactly one. One blank line between top-level statements. The `P`
+destructuring (`const { nullish } = P;`) goes right after the imports. Inside
+a test, separate the setup, the call and the `expect`s with blank lines.
+
+### 86. Know the commands that actually run
+
+Run the typecheck, the linter and the specs the way the repository is wired.
+In a monorepo without a root project reference, a root `tsc -b` can report
+nothing while packages are broken, and a green root test command can mean
+nothing ran. Check each package, and run the runner inside the package.
+
+## Appendix A. The verb table
+
+The order of the rows is the order of the walk in rule 65.
 
 | Verb | Description | Synonyms (do not use) |
 |---|---|---|
@@ -661,427 +1310,14 @@ The verb table. The order of the rows is the order of the walk in rule 8.6.
 | **get** | **Means:** Return a value that already exists and is cheap to reach: a field, a cached result, or an entry in an in-memory map or list. Calling it has no observable side effects and calling it twice returns the same thing.<br><br>**Use when:** Accessors and in-memory lookups: `getUser(id)` from a loaded map, `getSetting(key)`, `order.getStatus()`. If the value has to be calculated, use **compute**; if it comes from disk or a database, use **read**; if it comes over HTTP or a similar network protocol, use **fetch**; if "not found" is a normal outcome, use **try** (`tryGetUser`). Languages that prefer bare-noun accessors for plain fields (Go `user.Name()`, Python/C#/Kotlin properties) should follow that idiom, and keep `get` for lookups that take arguments or do real work.<br><br>**Why this word:** `get` is the most common verb in real codebases, so readers already expect it to mean a cheap, side-effect-free read. One word for this keeps the cheap path recognisable and makes anything named differently stand out as more expensive. | `retrieve`, `obtain`, `acquire`, `access`, `grab` |
 | **compute** | **Means:** Work out a *new result from other data* through calculation or reasoning. The result was not stored anywhere and has to be derived (`computeRoute`, `computeDiff`, `computeLayout`). This explicitly includes *reducing many values into one*: totals, averages, summaries, and merging several maps, configs or lists into a single result (`computeTotal(items)`, `computeMergedConfig(layers)`, `computeSummary(events)`). It also covers resolving references and inferring values.<br><br>**Use when:** Any derived value worth naming as work: arithmetic and statistics, diffs, layouts, resolved dependencies, and every many-to-one aggregation (sum, fold, merge, collect into one structure). Implement it however suits the language, such as a loop or a built-in `reduce`/`fold`/`sum`, but name the function `compute…` after the result it produces. Use **get** for values that are already available, **hash** for a fixed-size digest of data, **count** for how many items of a kind a collection holds, **filter** to keep a subset without combining it, **to** for a one-to-one conversion, and put a cache with **get** in front of a **compute** when the result is reused.<br><br>**Why this word:** `compute` tells callers that a new value is being derived and that the call costs something, so the result may be worth caching. Calculating, resolving, inferring, reducing, merging and aggregating are all that same derive-a-result act. Naming the function after its result (`computeTotal`) says more than naming the technique (`reduceItems`). Built-in methods such as `Array.prototype.reduce`, Kotlin `fold` or Python `sum` keep their names. | `resolve`, `infer`, `calculate`, `calc`, `derive`, `determine`, `evaluate`, `reduce`, `fold`, `aggregate`, `accumulate`, `collect`, `combine`, `merge`, `join`, `sum` |
 
-## 9. Types
-
-1. **`interface` for object shapes; `type` for unions, aliases, records and
-   function types:**
-
-   ```ts
-   export interface Spot {
-     row: number;
-     column: number;
-   }
-
-   export type Category = 'NORMAL' | 'HARD' | 'BONUS';
-
-   export type CategoryGroups = Record<Category, Item[]>;
-   ```
-
-2. **A property holds data, NEVER a function.** An `interface` or a `type`
-   describes the values that flow through a pipeline; the behaviour lives in
-   the named functions the pipeline composes (section 1). A function-valued
-   property — `format: (order: Order) => string`, `onDone: () => void`, a
-   `deps`/`service`/`handlers` bag — hides code inside a value: the reader
-   cannot see which implementation the field holds, the value stops being
-   comparable, serialisable and printable in a spec, and the object takes on
-   behaviour that belongs to the functions around it. This is the worst shape
-   a type takes in this style, and it spreads: one callback field pulls in
-   the next. A standalone function type for an argument
-   (`export type Random = () => number;`) is a different thing and stays
-   allowed — section 9.1 names it; this rule is about properties.
-
-   **Every interface or type with a function-typed property is refactored on
-   sight**, whatever work brought you to the file.
-
-   ```ts
-   // NEVER
-   export interface OrderFormatter {
-     locale: string;
-     format: (order: Order) => string;
-   }
-
-   // Instead
-   export interface OrderFormat {
-     locale: string;
-   }
-
-   export const formatOrder = (order: Order, { locale }: OrderFormat): string =>
-     formatAmount(order.total, locale);
-   ```
-
-   Four moves cover every case:
-
-   - **One behaviour field.** Delete it and call the named function directly
-     where the field was read.
-   - **A bag of functions** (`deps`, `service`, `handlers`, `adapter`). Pass
-     each function as its own argument, named for what it is, the injected
-     ones last (section 7.2).
-   - **A field that picks between known behaviours.** Store the choice as a
-     string union and `match` on it inside the function (sections 4, 9.3).
-   - **A callback the caller supplies.** Make it a parameter of the function,
-     not a field of the data the function takes.
-
-   Two shapes are not yours to choose, and they are the only ones that stay:
-
-   - **A framework's own callback API** — React props (`onClick`, `onChange`,
-     a render prop), a hook's argument, an option object a third-party
-     library defines. Keep the shape the framework requires, pass a named
-     function rather than an inline body, and keep that type in the boundary
-     file that talks to the framework; it never travels inward into the types
-     the pipeline carries.
-   - **The injected effect a pipeline threads** (section 7.4): the generator
-     or clock the entry point created, carried as one field named for the
-     effect, passed on unchanged and dropped at the last step that draws
-     from it.
-
-3. **String unions for fixed sets of values.** NEVER use `enum`.
-4. **NEVER use** `any`, non-null assertions (`!`), `@ts-ignore`,
-   `@ts-expect-error` or `as` casts in source files.
-5. **Reuse types instead of writing them out again:** the interface the
-   previous step returns for a step's input (section 6.3), the type
-   `createRandom` returns for an injected generator, `Parameters<typeof fn>`
-   for a wrapper. NEVER use `ReturnType<typeof …>` where the function already
-   declares a named return type (section 3.12).
-6. **Import types as types:** `import type { Item } from './types/item';`, or
-   `import { type Item, EMPTY_ITEM } from './types/item';` when one line brings
-   in both. Turn on `verbatimModuleSyntax` so the compiler checks it.
-7. **Run the typecheck the way the repository is wired.** In a monorepo without
-   a root project reference, a root `tsc -b` can report nothing while packages
-   are broken; check each package.
-
-## 10. Libraries
-
-lodash is the single vocabulary for iteration, collections, objects, strings,
-numbers, cloning and type checks. A native construct appears only where this
-section names it.
-
-1. **`lodash-es` for everything it covers**, called as functions and imported by
-   name: `map(items, …)`, `size(items)`, `head(items)`. NEVER call array methods
-   (`items.map(…)`) and NEVER read `.length`; use `size()`. Reach for a lodash
-   helper before writing one of your own.
-2. **Named imports from `lodash-es`, and nothing else.**
-   - One `import { … } from 'lodash-es';` per file, kept in sync with the
-     helpers actually used.
-   - NEVER `import _ from 'lodash-es'`, NEVER `import * as _ from 'lodash-es'`,
-     NEVER a `_.`-prefixed call. The `_` namespace does not appear in source.
-     (A bare `_` as the name of an unused parameter is a different thing and
-     stays allowed — section 8.3.)
-   - NEVER the CommonJS `lodash` package, and NEVER `require('lodash')`. If a
-     file still has either, replace it with named `lodash-es` imports and leave
-     nothing behind.
-   - `lodash-es` ships no types: `@types/lodash-es` MUST be a dev dependency, or
-     the named imports do not type-check.
-3. **The replacement table.** Each native construct on the left is replaced by
-   the lodash helper on the right.
-
-   | Native                                                                                     | lodash                                                                                                       |
-   | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------ |
-   | `for`, `while`, `for…of`, `for…in`, `.forEach`                                             | `map`, `filter`, `reduce`, `times`, `range` — never `forEach` (rule 4)                                       |
-   | `.map`, `.filter`, `.reduce`, `.find`, `.some`, `.every`, `.includes`, `.flatMap`, `.sort` | `map`, `filter`, `reduce`, `find`, `some`, `every`, `includes`, `flatMap`, `sortBy`                          |
-   | `a && a.b && a.b.c`                                                                        | `get(a, 'b.c')`                                                                                              |
-   | `Object.prototype.hasOwnProperty.call(obj, 'id')`                                          | `has(obj, 'id')`                                                                                             |
-   | `const { password, ...safe } = user`                                                       | `omit(user, ['password'])`, `pick(user, [...])`                                                              |
-   | `Object.keys` / `.values` / `.entries`                                                     | `keys` / `values` / `entries` (alias `toPairs`)                                                              |
-   | `str.trim()`, `str.charAt(0).toUpperCase() + …`                                            | `trim(str)`, `upperFirst(str)`                                                                               |
-   | hand-rolled case conversion                                                                | `camelCase`, `kebabCase`, `snakeCase`, `startCase`, `capitalize`, `lowerCase`, `pad`, `truncate`, `repeat`   |
-   | `Math.round`, `Math.floor`, `Math.ceil`                                                    | `round`, `floor`, `ceil`                                                                                     |
-   | `Math.max(...nums)`, `Math.min(...nums)`                                                   | `max(nums)`, `min(nums)`; also `clamp`, `inRange`, `sum`                                                     |
-   | `JSON.parse(JSON.stringify(obj))`                                                          | `cloneDeep(obj)`                                                                                             |
-   | `Object.assign({}, a, b)`, `{ ...a, ...b }`                                                | `assign({}, a, b)`; `merge({}, a, b)` when the merge is deep                                                 |
-   | `Array.isArray(x)`, `typeof x === 'string'`                                                | `isArray(x)`, `isString(x)`                                                                                  |
-   | `x === null \|\| x === undefined`                                                          | `isNil(x)`; also `isEmpty`, `isUndefined`, `isNumber`, `isBoolean`, `isFunction`, `isPlainObject`, `isEqual` |
-   | an accumulator loop building a lookup                                                      | `keyBy`, `groupBy`, `countBy`, `uniqBy`, `compact`                                                           |
-   | `Date.now()`                                                                               | `now()` — at the edge only (rule 5)                                                                          |
-
-4. **`forEach` is banned, in both forms.** `items.forEach(…)` and
-   `forEach(items, …)` are statement-level loops that exist only for their side
-   effects, and a body holds no side effects (section 5.6). A loop becomes
-   `map`, `filter`, `reduce`, `times` or `range`; an early exit becomes `find`,
-   `some`, `every`, `takeWhile` or `dropWhile`. This is the one place where the
-   lodash-first rule does not extend to the obvious helper.
-5. **`random` and `now` are ambient, and section 7 outranks lodash.** NEVER call
-   lodash `random`, `now` or `uniqueId` inside a function that computes: a
-   seeded generator or a clock comes in as an argument. Use `now()` only where
-   the clock itself is created, at the edge.
-6. **Mutating helpers are banned; the fresh-target forms are not.** `merge` and
-   `assign` write into their first argument, so the first argument MUST be a new
-   literal: `assign({}, a, b)` and `merge({}, a, b)` are fine,
-   `assign(target, source)` and `merge(target, source)` are not. NEVER use
-   `set`, `unset`, `pull`, `remove`, `fill` or `reverse` on a value you were
-   given; build the new value instead (`{ ...record, [key]: value }`,
-   `reverse([...items])`). `cloneDeep` replaces every hand-rolled deep copy.
-7. **Prefer the arrow over the property shorthand.** `map(users, 'name')`
-   type-checks but infers loosely; `map(users, (user) => user.name)` keeps the
-   tighter type. Use the shorthand only where the inferred type is still exact,
-   and add explicit type arguments where inference degrades.
-8. **lodash type guards narrow**, so they compose with `match`:
-   `.when(isString, …)`. Inside a `match`, prefer the `P` pattern (`string`,
-   `number`, `array()`); use a lodash guard where you need it outside a pattern
-   position, or inside `.when`. After each swap, confirm the narrowed type still
-   satisfies the code downstream.
-9. **Dates are not lodash's job.** Beyond `now()`, lodash has no date surface.
-   NEVER invent a lodash date helper or force arithmetic through `add`/
-   `subtract` where real date semantics are meant; take a date library
-   (`date-fns`, `dayjs`) and say so.
-10. **Async stays out of the collection helpers.** No lodash helper awaits
-    anything: `forEach` and `map` ignore returned promises. Run independent work
-    with `Promise.all(map(items, fetchItem))`; sequence dependent work by folding
-    with `reduce` over a promise
-    (`reduce(items, (done, item) => done.then(() => handle(item)), Promise.resolve())`).
-    NEVER write `for await` or an `await` inside a loop in a body.
-11. **`pipe` from `remeda` runs pipelines and composes steps**, and nothing
-    else does. Import it by name, `import { pipe } from 'remeda';`, and import
-    nothing else from `remeda`: lodash already covers collections (rule 18),
-    and remeda's data-last forms break the data-first rule (section 3.5).
-    NEVER import `chain`, `flow`, `flowRight` or `thru` from `lodash-es`,
-    `piped` from `remeda`, or `pipe` or `compose` from `ramda`.
-12. **`pipe` is typed for at most 15 steps** after the data; the type checker
-    rejects a sixteenth. When a pipeline needs more, group a run of its steps
-    into a named step whose body is its own `pipe`.
-13. **`match` and `P`** from `ts-pattern` do all branching.
-14. **`tryCatch`** from `ramda` captures every throw. Import ramda functions by
-    name and call them bare: NEVER `import * as R from 'ramda'`, NEVER
-    `R.tryCatch`.
-15. **`noop`** from `lodash-es` is the only way to write a no-op thunk. NEVER
-    write `() => undefined`.
-16. **Arithmetic.** Use lodash `floor`, `ceil`, `round`, `sum`, `clamp` and
-    `inRange`, and lodash `max` and `min` on arrays. `Math` keeps only the
-    scalar cases lodash does not cover: `Math.abs`, and `Math.min`/`Math.max`
-    on two single numbers.
-17. **Sorting.** `sortBy` is stable: it keeps tied items in their old order, and
-    tests depend on it. Sort from high to low by negating the key
-    (`(candidate) => -candidate.column`). Break ties with a list of keys:
-
-    ```ts
-    sortBy(candidates, [
-      (candidate) => candidate.row,
-      (candidate) => Math.abs(candidate.column - computeMiddleColumn(grid)),
-    ]);
-    ```
-
-    `sortBy` returns a new array; `reverse` does not, so copy first.
-
-18. **One library per job:** `lodash-es` for collections, `remeda` for `pipe`,
-    `ts-pattern` for branching, `ramda` for `tryCatch`, and the date library
-    of rule 9. Do not add a second library for any of these jobs; write a
-    small named helper over them instead. Do not take a helper from one of
-    them for another's job: NEVER import remeda's `map` beside lodash's.
-19. **Imports across lib and app boundaries** use the repository's path aliases
-    and land on a lib's `src/index.ts` (section 2.6). Imports inside a lib or
-    an app use relative paths, spelled the way its neighbours spell them (with
-    or without the file extension — pick one per repository).
-
-## 11. Layout and comments
-
-1. **Import order:** package imports first, then relative imports. Sort each
-   group by path.
-2. **Source files have no blank line between the two import groups. Spec files
-   have exactly one.**
-3. **One blank line between top-level statements.** The `P` destructuring
-   (`const { nullish } = P;`) goes right after the imports.
-4. **No comments.** Names and tests explain the code. The only comments allowed
-   are tool directives, the note on each exception in section 15, and the
-   public JSDoc of rule 5.
-5. **Keep public JSDoc when refactoring.** When you refactor a codebase that
-   documents its public API with JSDoc — a `/** … */` block on an exported
-   function, type or constant — NEVER remove those comments. Callers read them
-   in their editors and documentation tools. Keep each one on the export it
-   documents. If the refactor changes the signature, for example by injecting
-   an effect as a new argument (section 7), update the comment to match.
-
-## 12. Tests
-
-1. **One runner, imported by name.** With Vitest, `import { describe, expect, it } from 'vitest';`.
-   NEVER use mocks, spies, `beforeEach`, `afterEach`, snapshots, `.only`,
-   `.skip` or `it.each`. A body that takes its effects as arguments (section 7)
-   needs no mock: pass a stub function.
-2. **One `describe` per file, named exactly after the function:**
-   `describe('getTopCandidate', …)`. Only a spec that checks behaviour across
-   several features uses a plain-English title.
-3. **Titles read `should … when …`**, in plain everyday English about the
-   domain, not the code. Call the function "it". Say "the basket", "the spots"
-   and "the edits", not `items`, `cells` and `patches`:
-   - `'should keep the basket the same when it collects the edits'`
-   - `'should give no spots when the page holds no slot'`
-   - `'should charge the reduced price when the order clears the free-shipping threshold'`
-4. **Test each step on its own.** Every step in `internal/` has its own spec.
-   The entry point's spec checks the feature as a whole.
-5. **Every spec covers:**
-   - the main behaviour, and the empty case (an empty collection, no
-     candidates);
-   - for a pipeline step: one test for each field it passes on, using `toBe` to
-     show the same object came back;
-   - for an entry point or a `patch…` step: that the input it was given is
-     unchanged (`'should not change the old basket when …'`);
-   - for anything that draws from an injected generator: the same seed gives the
-     same result, and another seed gives a different one. Give each call its own
-     `createRandom(seed)`, because a shared generator moves on with every draw.
-     A step that only passes the generator on may share one `RANDOM` constant
-     across its tests;
-   - for anything that branches on a variant: every member of the union;
-   - for anything wrapped in `tryCatch`: that the failing path returns the
-     fallback.
-6. **Fixtures.**
-   - Shared read-only fixtures are `UPPER_SNAKE_CASE` constants:
-     `const BASKET: Item[] = [ITEM_APPLE];`
-   - When a test checks that the input is left alone, build the fixture with a
-     factory so every call makes a fresh one: `createBasket()`.
-   - Write a bulky fixture in compact literal notation and expand it through a
-     legend, so the test reads as the thing it describes:
-
-     ```ts
-     const CELLS: Record<string, Cell> = {
-       '#': CELL_WALL,
-       o: CELL_COIN,
-       P: CELL_EXIT,
-     };
-
-     const createGrid = (rows: string[]): Cell[][] =>
-       map(rows, (row) => map([...row], (cell) => CELLS[cell] ?? CELL_EMPTY));
-     ```
-
-   - Wrap the call in a helper that returns only the field under test:
-
-     ```ts
-     const filterCandidates = (rows: string[], layout: Layout) =>
-       filterGridCandidates({ grid: createGrid(rows), layout }).candidates;
-     ```
-
-7. **Assertions.** `toEqual` for values. `toBe` for primitives and to show the
-   same object came back. `toBeCloseTo` for fractions. When you check many cases
-   inside `times(…)`, pass a message so a failure names the case:
-   ``expect(cleared, `round ${round}`)``.
-8. **Inside a test**, separate the setup, the call and the `expect`s with blank
-   lines.
-9. **A slow test** that needs more than the default time passes a timeout as the
-   third argument of `it`: `120000`.
-10. **Specs may also:** cast with `as unknown as` to build a fixture that is hard
-    to type, write into a fixture they have just made, collect calls in a local
-    array (`offsets.push(offset)`), and declare small local types. Every other
-    rule in this guide applies to specs too.
-11. **Know the command that actually runs them.** In a monorepo whose task
-    runner is misconfigured, a green root command can mean nothing ran; run the
-    runner inside the package.
-
-## 13. Turning imperative code into a pipeline
-
-**Read the whole file first** and note its existing imports. Then work in this
-order, one construct at a time. The result MUST behave exactly as the code did
-before: same outputs, same short-circuiting, same mutation or non-mutation.
-Change the style, not the logic — do not rename variables or restructure
-anything the refactor does not touch. Keep every public JSDoc comment on the
-export it documents (section 11.5).
-
-1. **Name the steps.** Read the body top to bottom, find each distinct
-   transformation and extract it into a small named `const` arrow, in its own
-   file when the surrounding feature has a folder. Name each one with the verb
-   the walk in section 8.6 gives. Then check every other function name in the
-   file the same way, rename the ones that break section 8.6, and update every
-   caller.
-2. **Replace every branch** — `if`/`else`, `?:`, `switch`,
-   `instanceof`/`typeof` ladder, whatever its arm count — with a `match`.
-3. **Wrap every thrower** in `tryCatch`, with the catcher returning the
-   fallback. Fold async rejections with `promise.then(onOk, onError)`. Move the
-   side effect to the outermost edge.
-4. **Inject the ambient effects** the body reaches for — generator, clock,
-   storage, network — as arguments (section 7).
-5. **Thread absence** as `X | undefined`, short-circuiting with `?.` or lodash
-   `get`, and delete the null guards.
-6. **Kill the locals.** Collapse the `const` staircase and every `let` into one
-   `pipe(data, …)` that starts with the data, carrying extra context by adding
-   a property per step. Rewrite every `chain(…).thru(…).value()`, `flow(…)`,
-   `piped(…)` and `compose(…)` as a `pipe` the same way (section 3.5).
-7. **Sweep the natives into lodash**, row by row down the table in section 10.3,
-   checking each swap for the semantics the original had: an early exit becomes
-   `find`/`some`/`every`/`takeWhile`, never a `forEach` that returns `false`; an
-   `await` in a loop becomes `Promise.all` or a `reduce` over a promise, never a
-   `forEach` that drops the promise; a deep `merge` keeps its fresh `{}` target.
-8. **Fix the imports.** One named `import { … } from 'lodash-es'`, in sync with
-   the helpers now used; `import { pipe } from 'remeda'` and nothing else from
-   `remeda`; every `chain`, `flow`, `'lodash'` import, `require('lodash')` and
-   `_.`-prefixed call gone. Confirm no `_.` call, `chain(` or `flow(` remains.
-   Delete every re-export outside a lib's barrel and point its importers at
-   the file that declares the export (section 2.13).
-9. **Declare the return type** on every function in its own file — entry
-   points, steps and helpers — including `| undefined`. Move every returned
-   object shape into a named interface in the `types/` folder next to the
-   function (section 3.12), and type each step's input with the interface the
-   step before it returns. Check every interface you write or touch for a
-   function-typed property and refactor it away (section 9.2).
-10. **Run the typecheck, the linter and the specs** for the package, and add the
-    missing specs from section 12. A refactor is not done until all three pass.
-
-## 14. Remove these on sight
-
-- Any imperative code in a body: a `const` staircase, a `for`/`while` loop, a
-  `let` accumulator, a reassignment.
-- An `if`, `else`, `switch` or `?:` that is not a `match`.
-- A `try`, `catch` or `throw` anywhere in a body.
-- `import * as R from 'ramda'`, or an `R.tryCatch` call.
-- Any composition that is not `pipe(data, …)`: a `chain(…).thru(…).value()`, a
-  `flow`, `flowRight`, `piped` or `compose`.
-- A data-last call that returns a function waiting for its data
-  (`map(toName)`), or an import from `remeda` other than `pipe`.
-- A `pipe` around a single step (`pipe(x, f)` for `f(x)`), or a step that
-  returns nothing (`(scene) => void drawScene(scene)`).
-- An `import` of the CommonJS `lodash` package, a `require('lodash')`, an
-  `import _ from 'lodash-es'`, or any `_.`-prefixed call.
-- A `forEach`, in either form — `items.forEach(…)` or `forEach(items, …)`.
-- A mutating lodash call on a value that was passed in: `set`, `unset`, `pull`,
-  `remove`, `fill`, `reverse`, or `merge`/`assign` whose first argument is not a
-  fresh literal.
-- `Object.keys`/`values`/`entries`, `JSON.parse(JSON.stringify(x))`,
-  `Array.isArray(x)`, `typeof x === '…'`, or a hand-rolled string case
-  conversion, where the lodash helper belongs.
-- `map(users, 'name')` where the arrow form keeps a tighter type.
-- A `for await`, or an `await` inside a loop, in a body.
-- An invented lodash date helper, or date arithmetic forced through
-  `add`/`subtract`.
-- A `P.*` used inline in a pattern instead of destructured at the top of the
-  file.
-- A `src/types/` folder in a lib or an app, or any file in a lib's `src/` other
-  than `index.ts` (sections 2.2, 2.5).
-- A re-export outside a lib's `src/index.ts`, in any form: `export … from`, an
-  imported value or type exported again, or exported under a new name
-  (section 2.13).
-- An import that reaches past a lib's `index.ts` into its modules, an
-  `index.ts` anywhere but a lib's `src/`, or a barrel line that is an
-  `export *`, renames with `as`, or re-exports from another lib or a package
-  (section 2.6).
-- An import from an app, an import of another lib into `common`, or two
-  modules or libs that import from each other (sections 2.2, 2.4, 2.7).
-- An `instanceof` or `typeof` ladder.
-- A `.length` read, or an array method (`.map`, `.filter`, `.forEach`) where a
-  lodash function belongs.
-- Scattered `x == null` or `x === undefined` guards.
-- A hand-written `() => undefined`.
-- A side effect (toast, log, draw, write) buried mid-pipeline instead of at the
-  outermost handler.
-- An exported function that does real logic itself instead of only composing
-  named steps.
-- A function in its own file without a declared return type, or one that
-  returns an object typed inline or through `ReturnType<typeof …>` instead of
-  a named interface in the `types/` folder next to it.
-- An `interface` or `type` with a function-typed property —
-  `onDone: () => void`, `format: (value: number) => string`, or a
-  `deps`/`service`/`handlers` bag — outside a framework's own callback props
-  or a pipeline's injected effect (section 9.2).
-- `Math.random`, `Date.now`, `process.env` or a second generator inside a
-  computing function.
-- A function name that does not start with a verb from the verb table, that
-  starts with a word from its **Synonyms** column, or whose verb is not the
-  first one the walk in section 8.6 reaches.
-- A comment that explains the code instead of a better name or a test. Public
-  JSDoc is not such a comment and stays (section 11.5).
-
-## 15. Measured exceptions
+## Appendix B. The two measured exceptions
 
 Imperative code survives in exactly two shapes, and only where a measurement
 says it must. Each one carries a comment naming the measurement.
 
 1. **A hot numeric kernel** whose mutation never leaves the function, entered
-   often enough that one closure call per iteration dominates the cost. Keep the
-   loop; everything that calls it stays a pipeline.
+   often enough that one closure call per iteration dominates the cost. Keep
+   the loop; everything that calls it stays a pipeline.
 2. **A single mutable state cell** inside a generator or iterator, where the
    state _is_ the semantics (a PRNG, a cursor). Isolate the cell so the bodies
    around it stay single expressions.
@@ -1095,17 +1331,131 @@ numeric kernel: the pipeline forms of one blur accumulator measured 93ms
 against 263ms per run. Record your own numbers in the comment, and add nothing
 to this list without them.
 
-## 16. Adopting this guide in a new repository
+## Appendix C. Turning imperative code into a pipeline
+
+**Read the whole file first** and note its existing imports. Then work in this
+order, one construct at a time. The result MUST behave exactly as the code did
+before: same outputs, same short-circuiting, same mutation or non-mutation.
+Change the style, not the logic — do not rename variables or restructure
+anything the refactor does not touch. Keep every public JSDoc comment on the
+export it documents (rule 81).
+
+1. **Name the steps.** Read the body top to bottom, find each distinct
+   transformation and extract it into a small named `const` arrow, in its own
+   file when the surrounding feature has a folder. Name each one with the verb
+   the walk in rule 65 gives. Then check every other function name in the file
+   the same way, rename the ones that break rule 65, and update every caller.
+2. **Replace every branch** — `if`/`else`, `?:`, `switch`,
+   `instanceof`/`typeof` ladder, whatever its arm count — with a `match`
+   (rule 4).
+3. **Wrap every thrower** in `tryCatch`, with the catcher returning the
+   fallback (rule 5). Fold async rejections with `promise.then(onOk, onError)`
+   (rule 62). Move the side effect to the outermost edge (rule 56).
+4. **Inject the ambient effects** the body reaches for — generator, clock,
+   storage, network — as arguments (rules 55–58).
+5. **Thread absence** as `X | undefined`, short-circuiting with `?.` or lodash
+   `get`, and delete the null guards (rule 61).
+6. **Kill the locals.** Collapse the `const` staircase and every `let` into one
+   `pipe(data, …)` that starts with the data, carrying extra context by adding
+   a property per step. Rewrite every `chain(…).thru(…).value()`, `flow(…)`,
+   `piped(…)` and `compose(…)` as a `pipe` the same way (rules 8–9).
+7. **Sweep the natives into lodash**, row by row down the table in rule 14,
+   checking each swap for the semantics the original had: an early exit becomes
+   `find`/`some`/`every`/`takeWhile`, never a `forEach` that returns `false`;
+   an `await` in a loop becomes `Promise.all` or a `reduce` over a promise,
+   never a `forEach` that drops the promise; a deep `merge` keeps its fresh
+   `{}` target.
+8. **Fix the imports.** One named `import { … } from 'lodash-es'`, in sync with
+   the helpers now used; `import { pipe } from 'remeda'` and nothing else from
+   `remeda`; every `chain`, `flow`, `'lodash'` import, `require('lodash')` and
+   `_.`-prefixed call gone. Confirm no `_.` call, `chain(` or `flow(` remains.
+   Delete every re-export outside a lib's barrel and point its importers at
+   the file that declares the export (rule 40).
+9. **Declare the return type** on every function in its own file — entry
+   points, steps and helpers — including `| undefined`. Move every returned
+   object shape into a named interface in the `types/` folder next to the
+   function (rules 46–47), and type each step's input with the interface the
+   step before it returns (rule 27). Check every interface you write or touch
+   for a function-typed property and refactor it away (rule 48).
+10. **Run the typecheck, the linter and the specs** for the package (rule 86),
+    and add the missing specs from Part 8. A refactor is not done until all
+    three pass.
+
+## Appendix D. Remove these on sight
+
+- Any imperative code in a body: a `const` staircase, a `for`/`while` loop, a
+  `let` accumulator, a reassignment (rules 2, 9).
+- An `if`, `else`, `switch` or `?:` that is not a `match`, or an `instanceof`
+  or `typeof` ladder (rule 4).
+- A `try`, `catch` or `throw` anywhere in a body (rule 5).
+- `import * as R from 'ramda'`, an `R.tryCatch` call, an `import` of the
+  CommonJS `lodash` package, a `require('lodash')`, an
+  `import _ from 'lodash-es'`, or any `_.`-prefixed call (rule 15).
+- Any composition that is not `pipe(data, …)`: a `chain(…).thru(…).value()`, a
+  `flow`, `flowRight`, `piped` or `compose` (rules 8, 16).
+- A data-last call that returns a function waiting for its data
+  (`map(toName)`), or an import from `remeda` other than `pipe` (rules 8, 16).
+- A `pipe` around a single step (`pipe(x, f)` for `f(x)`), or a step that
+  returns nothing (`(scene) => void drawScene(scene)`) (rules 1, 56).
+- A `forEach`, in either form — `items.forEach(…)` or `forEach(items, …)`
+  (rule 7).
+- A mutating lodash call on a value that was passed in: `set`, `unset`, `pull`,
+  `remove`, `fill`, `reverse`, or `merge`/`assign` whose first argument is not
+  a fresh literal (rule 17).
+- `Object.keys`/`values`/`entries`, `JSON.parse(JSON.stringify(x))`,
+  `Array.isArray(x)`, `typeof x === '…'`, or a hand-rolled string case
+  conversion, where the lodash helper belongs (rule 14).
+- A `.length` read, or an array method (`.map`, `.filter`, `.forEach`) where a
+  lodash function belongs (rule 13).
+- `map(users, 'name')` where the arrow form keeps a tighter type (rule 21).
+- A `for await`, or an `await` inside a loop, in a body (rule 18).
+- An invented lodash date helper, or date arithmetic forced through
+  `add`/`subtract` (rule 23).
+- A `P.*` used inline in a pattern instead of destructured at the top of the
+  file (rule 11).
+- A `src/types/` folder in a lib or an app, or any file in a lib's `src/` other
+  than `index.ts` (rules 33, 35).
+- A re-export outside a lib's `src/index.ts`, in any form: `export … from`, an
+  imported value or type exported again, or exported under a new name
+  (rule 40).
+- An import that reaches past a lib's `index.ts` into its modules, an
+  `index.ts` anywhere but a lib's `src/`, or a barrel line that is an
+  `export *`, renames with `as`, or re-exports from another lib or a package
+  (rule 36).
+- An import from an app, an import of another lib into `common`, or two
+  modules or libs that import from each other (rules 33, 37, 43).
+- Scattered `x == null` or `x === undefined` guards (rule 61).
+- A hand-written `() => undefined` where lodash `noop` belongs (rule 14).
+- A side effect (toast, log, draw, write) buried mid-pipeline instead of at
+  the outermost handler (rule 56).
+- `Math.random`, `Date.now`, `process.env` or a second generator inside a
+  computing function (rules 55, 57).
+- An exported function that does real logic itself instead of only composing
+  named steps (rules 1, 10).
+- A function in its own file without a declared return type, or one that
+  returns an object typed inline or through `ReturnType<typeof …>` instead of
+  a named interface in the `types/` folder next to it (rules 46, 47, 53).
+- An `interface` or `type` with a function-typed property —
+  `onDone: () => void`, `format: (value: number) => string`, or a
+  `deps`/`service`/`handlers` bag — outside a framework's own callback props
+  or a pipeline's injected effect (rule 48).
+- A function name that does not start with a verb from the verb table, that
+  starts with a word from its **Synonyms** column, or whose verb is not the
+  first one the walk reaches (rule 65).
+- A comment that explains the code instead of a better name or a test. Public
+  JSDoc is not such a comment and stays (rules 80, 81).
+
+## Appendix E. Adopting this guide in a new repository
 
 Fill in these four blanks, then the guide is complete for that repository:
 
-1. **The libs and apps** (sections 2.1–2.4): each lib with the responsibility
+1. **The libs and apps** (rules 33, 34, 43): each lib with the responsibility
    it owns, and each app with the libs it is built from. A human makes this
    split; the guide fixes only the layout inside each lib.
-2. **The dependencies.** `lodash-es`, `remeda`, `ts-pattern` and `ramda` in
-   `dependencies`; `@types/lodash-es` in `devDependencies`, without which the
-   named lodash imports do not type-check.
-3. **Where constants live** (section 2.15): the path of the nearest `consts.ts`
-   per package.
+2. **The dependencies** (rule 12). `lodash-es`, `remeda`, `ts-pattern` and
+   `ramda` in `dependencies`; `@types/lodash-es` in `devDependencies`, without
+   which the named lodash imports do not type-check.
+3. **Where constants live** (rule 82): the path of the nearest `consts.ts` per
+   package.
 4. **The real commands** for linting, typechecking and testing, including any
-   monorepo quirk that makes a root command lie (sections 9.7, 12.11).
+   monorepo quirk that makes a root command lie (rule 86).
