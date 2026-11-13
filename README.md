@@ -1,7 +1,8 @@
 # Functional Pipelines Style
 
 <p align="center">
-  <em>Every function body is a single expression: one data-first [`pipe`](https://remedajs.com/docs/#pipe) that composes small steps.</em>
+  <img src="alchemist.png" alt="An alchemist at his alembic; surrounded by vignettes of scientific pursuits. Wood engraving by Dalziel, 18--. Source: Wellcome Collection." width="293px" height="400px"/>
+  <em>Every function body is a single expression: one data-first pipe that composes small steps.</em>
 </p>
 
 ```ts
@@ -15,10 +16,6 @@ export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
     patchPlayerSpawnTiles,
   );
 ```
-
-<p align="center">
-  <img src="alchemist.png" alt="An alchemist at his alembic; surrounded by vignettes of scientific pursuits. Wood engraving by Dalziel, 18--. Source: Wellcome Collection." width="586px" height="800px"/>
-</p>
 
 ## Contents
 
