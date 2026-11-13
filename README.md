@@ -7,7 +7,10 @@
   <br/>
   <em>one data-first pipe that composes small steps.</em>
   <br/>
+  <br/>
 </p>
+
+## Quick example
 
 ```ts
 export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
