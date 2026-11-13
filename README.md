@@ -2,7 +2,11 @@
 
 <p align="center">
   <img src="alchemist.png" alt="An alchemist at his alembic; surrounded by vignettes of scientific pursuits. Wood engraving by Dalziel, 18--. Source: Wellcome Collection." width="293px" height="400px"/>
-  <em>Every function body is a single expression: one data-first pipe that composes small steps.</em>
+  <br/>
+  <em>Every function body is a single expression:</em>
+  <br/>
+  <em>one data-first pipe that composes small steps.</em>
+  <br/>
 </p>
 
 ```ts
