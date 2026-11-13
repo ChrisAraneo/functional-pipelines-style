@@ -1,4 +1,4 @@
-# Functional Pipelines Style
+<h1 align="center">Functional Pipelines Style</h1>
 
 <p align="center">
   <img src="alchemist.png" alt="An alchemist at his alembic; surrounded by vignettes of scientific pursuits. Wood engraving by Dalziel, 18--. Source: Wellcome Collection." width="293px" height="400px"/>
