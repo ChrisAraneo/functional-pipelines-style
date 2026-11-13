@@ -1,8 +1,8 @@
 # Functional Pipelines Style
 
-***Every function body is a single expression: one data-first [`pipe`](https://remedajs.com/docs/#pipe) that composes small steps***.
-
-Quick example:
+<p align="center">
+  <em>Every function body is a single expression: one data-first [`pipe`](https://remedajs.com/docs/#pipe) that composes small steps.</em>
+</p>
 
 ```ts
 export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
@@ -16,11 +16,17 @@ export const placePlayerSpawn = (tiles: Tile[][], levelType: LevelType) =>
   );
 ```
 
-## What's in this repository?
+<p align="center">
+  <img src="alchemist.png" alt="An alchemist at his alembic; surrounded by vignettes of scientific pursuits. Wood engraving by Dalziel, 18--. Source: Wellcome Collection." width="586px" height="800px"/>
+</p>
+
+## Contents
 
 - [`FUNCTIONAL_PIPELINES_STYLE.md`](FUNCTIONAL_PIPELINES_STYLE.md): the style guide itself, written primarily for AI agents.
 - [`refactor/`](refactor/): AI prompts for refactoring an
   existing codebase into this style.
+- [`review/`](review/): AI prompts for reviewing an existing codebase against
+  this style, without changing a line of it.
 
 ## Refactoring a codebase
 
@@ -71,12 +77,62 @@ Read the final report first. It lists the decisions the master agent made for
 you, the tasks it set aside, and the code it left out. Then check the
 uncommitted changes and commit them yourself.
 
+## Reviewing a codebase
+
+A review tells you how far a codebase is from the style. It changes no code.
+
+Give [`00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/00_MASTER.md)
+to your best model and run it in your repository. Use the highest effort
+level. It works best in a tool that lets the model start other sub-agents; if
+yours cannot, the prompt says how to run the whole review in one session.
+
+The prompt has placeholders, like `{{SCOPE}}` or `{{REPORT_DIR}}`. You can
+find them in its _Inputs_ table. If you leave a placeholder empty, the prompt
+uses the default value from that table.
+
+### How it works
+
+The review is two nested loops: every file, and for each file every rule.
+
+1. **Queue.** The master agent fetches the style guide, turns its contents into
+   a checklist of every rule, and lists every source file in scope. Both go in
+   `style-review/`.
+2. **Review.** It starts one
+   [reviewer](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/01_REVIEWER.md)
+   per file. The reviewer reads the file, then walks the checklist from the
+   first rule to the last and decides, for each one, whether the file keeps it,
+   breaks it, or is not the kind of file the rule is about. Every violation it
+   finds is written down with the line it is on and the rule it breaks. One
+   last pass covers the rules that are about the repository rather than about a
+   file: the libs and apps split, the dependencies, the barrels, the aliases
+   and the commands.
+3. **Report.** When every file is done, a
+   [reporter](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/02_REPORTER.md)
+   collects the findings into `style-review/REPORT.md` and renders
+   `style-review/REPORT.html`, a page built from
+   [`REPORT_TEMPLATE.html`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/REPORT_TEMPLATE.html)
+   and styled with [simple.css](https://simplecss.org/). Every violation links
+   to the line it is on and to the rule it breaks.
+
+Nothing outside `style-review/` is ever written to, and no agent commits or
+changes a branch. A violation needs a line to quote and a numbered rule it
+breaks: where the guide leaves a case open, the review records an open
+question instead of guessing. If the run is cut off, start the master prompt
+again: it reads its log and carries on where it stopped.
+
+### When it is done
+
+Open `style-review/REPORT.html` in a browser. The summary says which rules are
+broken most often and which files are worst. To fix what it found, give
+[`refactor/00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/00_MASTER.md)
+the scope the report puts first.
+
+## License & art attribution
+
+Markdown and HTML files are licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+Art is sourced from the [Wellcome Collection](https://wellcomecollection.org/works/q7v7c5yr/images?id=ydxwbs8x) ([Public Domain Mark 1.0](https://creativecommons.org/publicdomain/mark/1.0/)). *"*An alchemist at his alembic; surrounded by vignettes of scientific pursuits*, wood engraving by Dalziel (18--)"*
+
 ## Author
 
-This experimental style is brought to you by:
-
 Krzysztof Pająk (Chris Araneo) - chris.araneo@gmail.com
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

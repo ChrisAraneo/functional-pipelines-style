@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!--
+      Template for REPORT.html, the web page of a Functional Pipelines Style
+      review. The reporter session fills it in:
+      https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/02_REPORTER.md
+
+      How to fill it in:
+
+      1. Replace every {{PLACEHOLDER}} with a value. No {{ may be left in the
+         finished page.
+      2. The comments "REPEAT:X" and "/REPEAT:X" wrap one item. Copy what lies
+         between them once per item, fill each copy in, and delete both
+         comments. With no items, delete the block, and the empty ul or table
+         that held it.
+      3. The comments "EMPTY:X" and "/EMPTY:X" wrap the text for "there are
+         none". Keep what lies between them only when REPEAT:X had no items,
+         and delete both comments either way.
+      4. Escape the ampersand and both angle brackets in every value you
+         insert, inside a code element too, so a quoted generic reads
+         "Tile&lt;T&gt;".
+      5. Links to a file, a folder or a rule are absolute https URLs into the
+         repository on GitHub, shaped
+         https://github.com/OWNER/REPOSITORY/blob/REF/PATH#L12-L18. The only
+         relative link is the one to REPORT.md beside this page.
+      6. Add no stylesheet, no font, no framework and no second script. The
+         stylesheet is simple.css from https://simplecss.org/ plus the few
+         rules in the style element below; the script at the end of the page
+         is the whole script.
+      7. Delete this comment.
+    -->
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{{TITLE}}</title>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css" />
+    <style>
+      /* The only rules of this page's own. Everything else is simple.css. */
+      body {
+        grid-template-columns: 1fr min(74rem, 94%) 1fr;
+        font-size: 1.05rem;
+      }
+      h1 {
+        font-size: 2.2rem;
+      }
+      h2 {
+        margin-top: 2.5rem;
+        font-size: 1.6rem;
+      }
+      h3 {
+        margin-top: 1rem;
+        font-size: 1.15rem;
+      }
+      table {
+        width: 100%;
+        margin: 1rem 0;
+        font-size: 0.92rem;
+      }
+      td,
+      th {
+        padding: 0.4rem 0.5rem;
+        vertical-align: top;
+      }
+      .scroll {
+        overflow-x: auto;
+      }
+      .num,
+      .where {
+        white-space: nowrap;
+      }
+      .num {
+        text-align: right;
+      }
+      .meta {
+        margin: 0.25rem 0 0.75rem;
+        color: var(--text-light);
+        font-size: 0.9rem;
+      }
+      article {
+        margin-bottom: 1.5rem;
+      }
+      article > h3 code {
+        font-size: 1rem;
+      }
+      #filter {
+        width: 100%;
+        max-width: 28rem;
+      }
+      [hidden] {
+        display: none !important;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>{{TITLE}}</h1>
+      <p>
+        Every file in scope, checked against every one of the
+        {{RULE_COUNT}} rules of the
+        <a href="{{GUIDE_URL}}">Functional Pipelines Style</a> guide.
+        {{VIOLATION_COUNT}} violations in {{FILES_WITH_VIOLATIONS}} of
+        {{FILES_REVIEWED}} files.
+      </p>
+      <nav>
+        <a href="#summary">Summary</a>
+        <a href="#by-rule">By rule</a>
+        <a href="#by-file">By file</a>
+        <a href="#findings">Findings</a>
+        <a href="#questions">Open questions</a>
+        <a href="#clean">Clean files</a>
+        <a href="#not-reviewed">Not reviewed</a>
+      </nav>
+    </header>
+
+    <main>
+      <section id="summary">
+        <h2>Summary</h2>
+        <table>
+          <tbody>
+            <tr>
+              <th>Repository</th>
+              <td><a href="{{REPO_URL}}">{{REPO_NAME}}</a></td>
+            </tr>
+            <tr>
+              <th>Reviewed state</th>
+              <td><code>{{REF}}</code>, working tree at {{REVIEWED_AT}}</td>
+            </tr>
+            <tr>
+              <th>Scope</th>
+              <td>{{SCOPE}}</td>
+            </tr>
+            <tr>
+              <th>Guide</th>
+              <td>
+                <a href="{{GUIDE_URL}}">FUNCTIONAL_PIPELINES_STYLE.md</a>,
+                {{RULE_COUNT}} rules
+              </td>
+            </tr>
+            <tr>
+              <th>Files reviewed</th>
+              <td class="num">{{FILES_REVIEWED}}</td>
+            </tr>
+            <tr>
+              <th>Files with violations</th>
+              <td class="num">{{FILES_WITH_VIOLATIONS}}</td>
+            </tr>
+            <tr>
+              <th>Clean files</th>
+              <td class="num">{{CLEAN_COUNT}}</td>
+            </tr>
+            <tr>
+              <th>Files not reviewed</th>
+              <td class="num">{{SKIPPED_COUNT}}</td>
+            </tr>
+            <tr>
+              <th>Violations</th>
+              <td class="num">{{VIOLATION_COUNT}}</td>
+            </tr>
+            <tr>
+              <th>Rules violated</th>
+              <td class="num">{{RULES_VIOLATED_COUNT}} of {{RULE_COUNT}}</td>
+            </tr>
+            <tr>
+              <th>Open questions</th>
+              <td class="num">{{OPEN_QUESTION_COUNT}}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="notice">
+          Start here: {{HEADLINE}}
+        </p>
+        <p>
+          Every row below points at the line it is about. A review changes no
+          code: the fixes are the reader's call, and the rules are ordered by
+          impact, so a low rule number is a deeper change than a high one.
+          The same findings are in
+          <a href="{{REPORT_MD_PATH}}">REPORT.md</a>.
+        </p>
+      </section>
+
+      <section id="by-rule">
+        <h2>Violations by rule</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Rule</th>
+                <th>Part</th>
+                <th class="num">Violations</th>
+                <th class="num">Files</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- REPEAT:RULE -->
+              <tr>
+                <td>
+                  <a href="{{RULE_URL}}">rule {{RULE_NUMBER}}</a> —
+                  {{RULE_TITLE}}
+                </td>
+                <td>{{RULE_PART}}</td>
+                <td class="num">{{RULE_VIOLATIONS}}</td>
+                <td class="num">{{RULE_FILES}}</td>
+              </tr>
+              <!-- /REPEAT:RULE -->
+            </tbody>
+          </table>
+        </div>
+        <!-- EMPTY:RULE -->
+        <p>No rule was violated.</p>
+        <!-- /EMPTY:RULE -->
+      </section>
+
+      <section id="by-file">
+        <h2>Violations by file</h2>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th class="num">Violations</th>
+                <th>Rules</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- REPEAT:FILE_SUMMARY -->
+              <tr>
+                <td>
+                  <a href="#{{FILE_ANCHOR}}"><code>{{FILE_PATH}}</code></a>
+                </td>
+                <td class="num">{{FILE_VIOLATIONS}}</td>
+                <td>{{FILE_RULES_VIOLATED}}</td>
+              </tr>
+              <!-- /REPEAT:FILE_SUMMARY -->
+            </tbody>
+          </table>
+        </div>
+        <!-- EMPTY:FILE_SUMMARY -->
+        <p>No file has a violation.</p>
+        <!-- /EMPTY:FILE_SUMMARY -->
+      </section>
+
+      <section id="findings">
+        <h2>Findings</h2>
+        <p>
+          <label for="filter">Filter by path, rule or text</label><br />
+          <input
+            id="filter"
+            type="search"
+            placeholder="place-player-spawn, rule 9, forEach…"
+          />
+          <br />
+          <small id="filter-count"
+            >{{FILES_WITH_VIOLATIONS}} of {{FILES_WITH_VIOLATIONS}} files
+            shown</small
+          >
+        </p>
+
+        <!-- REPEAT:FILE -->
+        <article id="{{FILE_ANCHOR}}">
+          <h3>
+            <a href="{{FILE_URL}}"><code>{{FILE_PATH}}</code></a>
+          </h3>
+          <p class="meta">
+            {{FILE_VIOLATIONS}} violations · {{FILE_LINES}} lines · checked
+            {{FILE_CHECKED}} · not applicable: {{FILE_NOT_APPLICABLE}}
+            {{FILE_NOTES}}
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th class="num">#</th>
+                  <th>Rule</th>
+                  <th>Where</th>
+                  <th>Violation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <!-- REPEAT:FINDING -->
+                <tr id="{{FINDING_ANCHOR}}">
+                  <td class="num">{{FINDING_NUMBER}}</td>
+                  <td>
+                    <a href="{{FINDING_RULE_URL}}"
+                      >rule {{FINDING_RULE_NUMBER}}</a
+                    >
+                    — {{FINDING_RULE_TITLE}}
+                  </td>
+                  <td>
+                    <a class="where" href="{{FINDING_WHERE_URL}}"
+                      >{{FINDING_WHERE_LABEL}}</a
+                    ><br />
+                    <code>{{FINDING_SYMBOL}}</code>
+                  </td>
+                  <td>{{FINDING_TEXT}}</td>
+                </tr>
+                <!-- /REPEAT:FINDING -->
+              </tbody>
+            </table>
+          </div>
+        </article>
+        <!-- /REPEAT:FILE -->
+
+        <!-- EMPTY:FILE -->
+        <p>
+          No violation was found. Every reviewed file keeps every rule that
+          applies to it.
+        </p>
+        <!-- /EMPTY:FILE -->
+      </section>
+
+      <section id="questions">
+        <h2>Open questions</h2>
+        <p>
+          Cases where the guide leaves two readings open. A reviewer recorded
+          them instead of guessing; they are not violations.
+        </p>
+        <ul>
+          <!-- REPEAT:QUESTION -->
+          <li>
+            <a href="{{QUESTION_RULE_URL}}">rule {{QUESTION_RULE_NUMBER}}</a>
+            in
+            <a href="{{QUESTION_WHERE_URL}}"
+              ><code>{{QUESTION_FILE_PATH}}</code> {{QUESTION_WHERE_LABEL}}</a
+            >: {{QUESTION_TEXT}}
+          </li>
+          <!-- /REPEAT:QUESTION -->
+        </ul>
+        <!-- EMPTY:QUESTION -->
+        <p>None. Every rule decided every case it applied to.</p>
+        <!-- /EMPTY:QUESTION -->
+      </section>
+
+      <section id="clean">
+        <h2>Clean files</h2>
+        <p>
+          {{CLEAN_COUNT}} of {{FILES_REVIEWED}} reviewed files break none of
+          the rules that apply to them.
+        </p>
+        <ul>
+          <!-- REPEAT:CLEAN_FILE -->
+          <li>
+            <a href="{{CLEAN_FILE_URL}}"><code>{{CLEAN_FILE_PATH}}</code></a>
+          </li>
+          <!-- /REPEAT:CLEAN_FILE -->
+        </ul>
+        <!-- EMPTY:CLEAN_FILE -->
+        <p>None: every reviewed file breaks at least one rule.</p>
+        <!-- /EMPTY:CLEAN_FILE -->
+      </section>
+
+      <section id="not-reviewed">
+        <h2>Not reviewed</h2>
+        <p>
+          Files in scope that no reviewer could finish. Nothing is known about
+          them.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- REPEAT:SKIPPED_FILE -->
+              <tr>
+                <td>
+                  <a href="{{SKIPPED_FILE_URL}}"
+                    ><code>{{SKIPPED_FILE_PATH}}</code></a
+                  >
+                </td>
+                <td>{{SKIPPED_REASON}}</td>
+              </tr>
+              <!-- /REPEAT:SKIPPED_FILE -->
+            </tbody>
+          </table>
+        </div>
+        <!-- EMPTY:SKIPPED_FILE -->
+        <p>None. Every file in scope was reviewed.</p>
+        <!-- /EMPTY:SKIPPED_FILE -->
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        {{TITLE}} · generated by
+        <a
+          href="https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/00_MASTER.md"
+          >the review workflow</a
+        >
+        of the
+        <a href="{{GUIDE_URL}}">Functional Pipelines Style</a> guide, from the
+        working tree at {{REVIEWED_AT}} · the same findings in
+        <a href="{{REPORT_MD_PATH}}">REPORT.md</a>
+      </p>
+    </footer>
+
+    <script>
+      const articles = Array.from(document.querySelectorAll('#findings article'));
+      const filter = document.getElementById('filter');
+      const count = document.getElementById('filter-count');
+      const apply = () => {
+        const query = filter.value.trim().toLowerCase();
+        const shown = articles.filter(
+          (article) => !query || article.textContent.toLowerCase().includes(query),
+        );
+        articles.forEach((article) => {
+          article.hidden = !shown.includes(article);
+        });
+        count.textContent = `${shown.length} of ${articles.length} files shown`;
+      };
+      filter.addEventListener('input', apply);
+      apply();
+    </script>
+  </body>
+</html>
