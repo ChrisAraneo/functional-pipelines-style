@@ -14,21 +14,30 @@
          between them once per item, fill each copy in, and delete both
          comments. With no items, delete the block, and the empty ul or table
          that held it.
-      3. The comments "EMPTY:X" and "/EMPTY:X" wrap the text for "there are
+      3. Three repeats are nested: REPEAT:FILE sits inside REPEAT:MODULE,
+         REPEAT:FINDING inside REPEAT:FILE, and REPEAT:CLEAN_FILE inside
+         REPEAT:CLEAN_MODULE. Fill the inner block once per item of the outer
+         one. A module's first article is the module's own section, with
+         {{FILE_PATH}} set to "(module)".
+      4. The comments "EMPTY:X" and "/EMPTY:X" wrap the text for "there are
          none". Keep what lies between them only when REPEAT:X had no items,
          and delete both comments either way.
-      4. Escape the ampersand and both angle brackets in every value you
+      5. Escape the ampersand and both angle brackets in every value you
          insert, inside a code element too, so a quoted generic reads
          "Tile&lt;T&gt;".
-      5. Links to a file, a folder or a rule are absolute https URLs into the
+      6. Links to a file, a folder or a rule are absolute https URLs into the
          repository on GitHub, shaped
-         https://github.com/OWNER/REPOSITORY/blob/REF/PATH#L12-L18. The only
-         relative link is the one to REPORT.md beside this page.
-      6. Add no stylesheet, no font, no framework and no second script. The
+         https://github.com/OWNER/REPOSITORY/blob/REF/PATH#L12-L18, and a
+         folder or a module uses /tree/ in place of /blob/. The only relative
+         link is the one to REPORT.md beside this page.
+      7. Give every details element of the findings section the "open"
+         attribute when at most 20 modules have violations; leave them all
+         closed otherwise.
+      8. Add no stylesheet, no font, no framework and no second script. The
          stylesheet is simple.css from https://simplecss.org/ plus the few
          rules in the style element below; the script at the end of the page
          is the whole script.
-      7. Delete this comment.
+      9. Delete this comment.
     -->
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -76,6 +85,15 @@
         color: var(--text-light);
         font-size: 0.9rem;
       }
+      details.module {
+        margin-bottom: 1rem;
+      }
+      details.module > summary {
+        font-size: 1.05rem;
+      }
+      details.module > summary code {
+        font-size: 1rem;
+      }
       article {
         margin-bottom: 1.5rem;
       }
@@ -97,13 +115,15 @@
       <p>
         Every file in scope, checked against every one of the
         {{RULE_COUNT}} rules of the
-        <a href="{{GUIDE_URL}}">Functional Pipelines Style</a> guide.
-        {{VIOLATION_COUNT}} violations in {{FILES_WITH_VIOLATIONS}} of
-        {{FILES_REVIEWED}} files.
+        <a href="{{GUIDE_URL}}">Functional Pipelines Style</a> guide, one
+        module at a time. {{VIOLATION_COUNT}} violations in
+        {{FILES_WITH_VIOLATIONS}} of {{FILES_REVIEWED}} files, across
+        {{MODULES_WITH_VIOLATIONS}} of {{MODULES_REVIEWED}} modules.
       </p>
       <nav>
         <a href="#summary">Summary</a>
         <a href="#by-rule">By rule</a>
+        <a href="#by-module">By module</a>
         <a href="#by-file">By file</a>
         <a href="#findings">Findings</a>
         <a href="#questions">Open questions</a>
@@ -135,6 +155,22 @@
                 <a href="{{GUIDE_URL}}">FUNCTIONAL_PIPELINES_STYLE.md</a>,
                 {{RULE_COUNT}} rules
               </td>
+            </tr>
+            <tr>
+              <th>Packages</th>
+              <td class="num">{{PACKAGE_COUNT}}</td>
+            </tr>
+            <tr>
+              <th>Modules reviewed</th>
+              <td class="num">{{MODULES_REVIEWED}}</td>
+            </tr>
+            <tr>
+              <th>Modules with violations</th>
+              <td class="num">{{MODULES_WITH_VIOLATIONS}}</td>
+            </tr>
+            <tr>
+              <th>Modules not reviewed</th>
+              <td class="num">{{MODULES_SKIPPED}}</td>
             </tr>
             <tr>
               <th>Files reviewed</th>
@@ -188,6 +224,7 @@
                 <th>Part</th>
                 <th class="num">Violations</th>
                 <th class="num">Files</th>
+                <th class="num">Modules</th>
               </tr>
             </thead>
             <tbody>
@@ -200,6 +237,7 @@
                 <td>{{RULE_PART}}</td>
                 <td class="num">{{RULE_VIOLATIONS}}</td>
                 <td class="num">{{RULE_FILES}}</td>
+                <td class="num">{{RULE_MODULES}}</td>
               </tr>
               <!-- /REPEAT:RULE -->
             </tbody>
@@ -210,13 +248,58 @@
         <!-- /EMPTY:RULE -->
       </section>
 
+      <section id="by-module">
+        <h2>Violations by module</h2>
+        <p>
+          One row per module a reviewer session checked: a folder, a package's
+          own files, or the repository itself.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Package</th>
+                <th class="num">Files</th>
+                <th class="num">Violations</th>
+                <th>Rules</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- REPEAT:MODULE_SUMMARY -->
+              <tr>
+                <td>
+                  <a href="#{{MODULE_ANCHOR}}"><code>{{MODULE_PATH}}</code></a>
+                </td>
+                <td><code>{{MODULE_PACKAGE}}</code></td>
+                <td class="num">
+                  {{MODULE_FILES_WITH_VIOLATIONS}} of {{MODULE_FILES}}
+                </td>
+                <td class="num">{{MODULE_VIOLATIONS}}</td>
+                <td>{{MODULE_RULES_VIOLATED}}</td>
+              </tr>
+              <!-- /REPEAT:MODULE_SUMMARY -->
+            </tbody>
+          </table>
+        </div>
+        <!-- EMPTY:MODULE_SUMMARY -->
+        <p>No module has a violation.</p>
+        <!-- /EMPTY:MODULE_SUMMARY -->
+      </section>
+
       <section id="by-file">
         <h2>Violations by file</h2>
+        <p>
+          The {{FILE_SUMMARY_SHOWN}} files with the most violations.
+          {{FILE_SUMMARY_HIDDEN}} more files with violations are in the
+          findings below.
+        </p>
         <div class="scroll">
           <table>
             <thead>
               <tr>
                 <th>File</th>
+                <th>Module</th>
                 <th class="num">Violations</th>
                 <th>Rules</th>
               </tr>
@@ -227,6 +310,7 @@
                 <td>
                   <a href="#{{FILE_ANCHOR}}"><code>{{FILE_PATH}}</code></a>
                 </td>
+                <td><code>{{FILE_MODULE}}</code></td>
                 <td class="num">{{FILE_VIOLATIONS}}</td>
                 <td>{{FILE_RULES_VIOLATED}}</td>
               </tr>
@@ -246,66 +330,79 @@
           <input
             id="filter"
             type="search"
-            placeholder="place-player-spawn, rule 9, forEach…"
+            placeholder="create-order, rule 9, forEach…"
           />
           <br />
           <small id="filter-count"
-            >{{FILES_WITH_VIOLATIONS}} of {{FILES_WITH_VIOLATIONS}} files
-            shown</small
+            >{{ARTICLE_COUNT}} of {{ARTICLE_COUNT}} sections shown</small
           >
         </p>
 
-        <!-- REPEAT:FILE -->
-        <article id="{{FILE_ANCHOR}}">
-          <h3>
-            <a href="{{FILE_URL}}"><code>{{FILE_PATH}}</code></a>
-          </h3>
+        <!-- REPEAT:MODULE -->
+        <details class="module" id="{{MODULE_ANCHOR}}">
+          <summary>
+            <code>{{MODULE_PATH}}</code> — {{MODULE_VIOLATIONS}} violations in
+            {{MODULE_FILES_WITH_VIOLATIONS}} of {{MODULE_FILES}} files
+          </summary>
           <p class="meta">
-            {{FILE_VIOLATIONS}} violations · {{FILE_LINES}} lines · checked
-            {{FILE_CHECKED}} · not applicable: {{FILE_NOT_APPLICABLE}}
-            {{FILE_NOTES}}
+            <a href="{{MODULE_URL}}">{{MODULE_PATH}}</a> · package
+            <code>{{MODULE_PACKAGE}}</code> · {{MODULE_LINES}} lines · checked
+            {{MODULE_CHECKED}} · no match in this module:
+            {{MODULE_NOT_APPLICABLE}}
           </p>
-          <div class="scroll">
-            <table>
-              <thead>
-                <tr>
-                  <th class="num">#</th>
-                  <th>Rule</th>
-                  <th>Where</th>
-                  <th>Violation</th>
-                </tr>
-              </thead>
-              <tbody>
-                <!-- REPEAT:FINDING -->
-                <tr id="{{FINDING_ANCHOR}}">
-                  <td class="num">{{FINDING_NUMBER}}</td>
-                  <td>
-                    <a href="{{FINDING_RULE_URL}}"
-                      >rule {{FINDING_RULE_NUMBER}}</a
-                    >
-                    — {{FINDING_RULE_TITLE}}
-                  </td>
-                  <td>
-                    <a class="where" href="{{FINDING_WHERE_URL}}"
-                      >{{FINDING_WHERE_LABEL}}</a
-                    ><br />
-                    <code>{{FINDING_SYMBOL}}</code>
-                  </td>
-                  <td>{{FINDING_TEXT}}</td>
-                </tr>
-                <!-- /REPEAT:FINDING -->
-              </tbody>
-            </table>
-          </div>
-        </article>
-        <!-- /REPEAT:FILE -->
 
-        <!-- EMPTY:FILE -->
+          <!-- REPEAT:FILE -->
+          <article id="{{FILE_ANCHOR}}">
+            <h3>
+              <a href="{{FILE_URL}}"><code>{{FILE_PATH}}</code></a>
+            </h3>
+            <p class="meta">
+              {{FILE_VIOLATIONS}} violations · {{FILE_LINES}} lines · rules
+              {{FILE_RULES_VIOLATED}}{{FILE_NOTES}}
+            </p>
+            <div class="scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="num">#</th>
+                    <th>Rule</th>
+                    <th>Where</th>
+                    <th>Violation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <!-- REPEAT:FINDING -->
+                  <tr id="{{FINDING_ANCHOR}}">
+                    <td class="num">{{FINDING_NUMBER}}</td>
+                    <td>
+                      <a href="{{FINDING_RULE_URL}}"
+                        >rule {{FINDING_RULE_NUMBER}}</a
+                      >
+                      — {{FINDING_RULE_TITLE}}
+                    </td>
+                    <td>
+                      <a class="where" href="{{FINDING_WHERE_URL}}"
+                        >{{FINDING_WHERE_LABEL}}</a
+                      ><br />
+                      <code>{{FINDING_SYMBOL}}</code>
+                    </td>
+                    <td>{{FINDING_TEXT}}</td>
+                  </tr>
+                  <!-- /REPEAT:FINDING -->
+                </tbody>
+              </table>
+            </div>
+          </article>
+          <!-- /REPEAT:FILE -->
+        </details>
+        <!-- /REPEAT:MODULE -->
+
+        <!-- EMPTY:MODULE -->
         <p>
           No violation was found. Every reviewed file keeps every rule that
           applies to it.
         </p>
-        <!-- /EMPTY:FILE -->
+        <!-- /EMPTY:MODULE -->
       </section>
 
       <section id="questions">
@@ -334,31 +431,71 @@
         <h2>Clean files</h2>
         <p>
           {{CLEAN_COUNT}} of {{FILES_REVIEWED}} reviewed files break none of
-          the rules that apply to them.
+          the rules that apply to them, by module.
         </p>
         <ul>
-          <!-- REPEAT:CLEAN_FILE -->
+          <!-- REPEAT:CLEAN_MODULE -->
           <li>
-            <a href="{{CLEAN_FILE_URL}}"><code>{{CLEAN_FILE_PATH}}</code></a>
+            <a href="{{CLEAN_MODULE_URL}}"
+              ><code>{{CLEAN_MODULE_PATH}}</code></a
+            >
+            — {{CLEAN_MODULE_COUNT}} of {{CLEAN_MODULE_FILES}} files
+            <ul>
+              <!-- REPEAT:CLEAN_FILE -->
+              <li>
+                <a href="{{CLEAN_FILE_URL}}"
+                  ><code>{{CLEAN_FILE_PATH}}</code></a
+                >
+              </li>
+              <!-- /REPEAT:CLEAN_FILE -->
+            </ul>
           </li>
-          <!-- /REPEAT:CLEAN_FILE -->
+          <!-- /REPEAT:CLEAN_MODULE -->
         </ul>
-        <!-- EMPTY:CLEAN_FILE -->
+        <!-- EMPTY:CLEAN_MODULE -->
         <p>None: every reviewed file breaks at least one rule.</p>
-        <!-- /EMPTY:CLEAN_FILE -->
+        <!-- /EMPTY:CLEAN_MODULE -->
       </section>
 
       <section id="not-reviewed">
         <h2>Not reviewed</h2>
         <p>
-          Files in scope that no reviewer could finish. Nothing is known about
-          them.
+          Modules and files in scope that no reviewer could finish. Nothing is
+          known about them.
         </p>
         <div class="scroll">
           <table>
             <thead>
               <tr>
+                <th>Module</th>
+                <th class="num">Files</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- REPEAT:SKIPPED_MODULE -->
+              <tr>
+                <td>
+                  <a href="{{SKIPPED_MODULE_URL}}"
+                    ><code>{{SKIPPED_MODULE_PATH}}</code></a
+                  >
+                </td>
+                <td class="num">{{SKIPPED_MODULE_FILES}}</td>
+                <td>{{SKIPPED_MODULE_REASON}}</td>
+              </tr>
+              <!-- /REPEAT:SKIPPED_MODULE -->
+            </tbody>
+          </table>
+        </div>
+        <!-- EMPTY:SKIPPED_MODULE -->
+        <p>None. Every module in scope was reviewed.</p>
+        <!-- /EMPTY:SKIPPED_MODULE -->
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr>
                 <th>File</th>
+                <th>Module</th>
                 <th>Why</th>
               </tr>
             </thead>
@@ -370,6 +507,7 @@
                     ><code>{{SKIPPED_FILE_PATH}}</code></a
                   >
                 </td>
+                <td><code>{{SKIPPED_FILE_MODULE}}</code></td>
                 <td>{{SKIPPED_REASON}}</td>
               </tr>
               <!-- /REPEAT:SKIPPED_FILE -->
@@ -377,7 +515,7 @@
           </table>
         </div>
         <!-- EMPTY:SKIPPED_FILE -->
-        <p>None. Every file in scope was reviewed.</p>
+        <p>None. Every file in a reviewed module was reviewed.</p>
         <!-- /EMPTY:SKIPPED_FILE -->
       </section>
     </main>
@@ -397,18 +535,27 @@
     </footer>
 
     <script>
+      const modules = Array.from(document.querySelectorAll('#findings details'));
       const articles = Array.from(document.querySelectorAll('#findings article'));
       const filter = document.getElementById('filter');
       const count = document.getElementById('filter-count');
       const apply = () => {
         const query = filter.value.trim().toLowerCase();
-        const shown = articles.filter(
-          (article) => !query || article.textContent.toLowerCase().includes(query),
-        );
+        const matches = (article) =>
+          !query || article.textContent.toLowerCase().includes(query);
+        const shown = articles.filter(matches);
         articles.forEach((article) => {
-          article.hidden = !shown.includes(article);
+          article.hidden = !matches(article);
         });
-        count.textContent = `${shown.length} of ${articles.length} files shown`;
+        modules.forEach((module) => {
+          const own = Array.from(module.querySelectorAll('article'));
+          const kept = own.filter(matches).length;
+          module.hidden = own.length > 0 && kept === 0;
+          if (query && kept > 0) {
+            module.open = true;
+          }
+        });
+        count.textContent = `${shown.length} of ${articles.length} sections shown`;
       };
       filter.addEventListener('input', apply);
       apply();

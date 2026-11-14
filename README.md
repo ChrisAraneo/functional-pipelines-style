@@ -92,44 +92,63 @@ yours cannot, the prompt says how to run the whole review in one session.
 
 The prompt has placeholders, like `{{SCOPE}}` or `{{REPORT_DIR}}`. You can
 find them in its _Inputs_ table. If you leave a placeholder empty, the prompt
-uses the default value from that table.
+uses the default value from that table. Three of them are about size:
+`{{MAX_FILES_PER_MODULE}}` and `{{MAX_LINES_PER_MODULE}}` set how much code
+one agent takes on, and `{{PARALLEL_REVIEWERS}}` how many agents run at once.
 
 ### How it works
 
-The review is two nested loops: every file, and for each file every rule.
+The review is two nested loops: every module, and for each module every rule.
+A **module** is a folder of code small enough for one agent to hold: a folder
+in a lib's `src/`, a package's own files, or a part of a folder too big for one
+session. A project of thousands of files becomes a few hundred modules, and the
+agent reviewing one reads each rule once and applies it to every file in front
+of it.
 
 1. **Queue.** The master agent fetches the style guide, turns its contents into
-   a checklist of every rule, and lists every source file in scope. Both go in
-   `style-review/`.
+   a checklist of every rule, lists every source file in scope, and cuts the
+   repository into modules: it finds the packages, walks down the folders of
+   each one and keeps the largest folder that still fits the budget of files
+   and lines. Every file lands in exactly one module. The queue, one row per
+   module, goes in `style-review/`.
 2. **Review.** It starts one
    [reviewer](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/01_REVIEWER.md)
-   per file. The reviewer reads the file, then walks the checklist from the
-   first rule to the last and decides, for each one, whether the file keeps it,
-   breaks it, or is not the kind of file the rule is about. Every violation it
-   finds is written down with the line it is on and the rule it breaks. One
-   last pass covers the rules that are about the repository rather than about a
-   file: the libs and apps split, the dependencies, the barrels, the aliases
-   and the commands.
-3. **Report.** When every file is done, a
+   per module, several at a time. The reviewer reads the module's files, then
+   walks the checklist from the first rule to the last and decides, for every
+   rule and every file, whether the file keeps it, breaks it, or is not the
+   kind of file the rule is about. Each violation is written down with the line
+   it is on and the rule it breaks. The rules that are about a folder rather
+   than a file — the layout, a spec beside every file, what sits in
+   `internal/`, the imports that cross a boundary — are answered by the session
+   that has the whole folder in front of it. Two wider passes cover the rest:
+   one per package, for its layout, its barrel and its project files, and one
+   for the repository, for the libs and apps split, the dependencies, the
+   aliases and the commands.
+3. **Report.** When every module is done, a
    [reporter](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/02_REPORTER.md)
    collects the findings into `style-review/REPORT.md` and renders
    `style-review/REPORT.html`, a page built from
    [`REPORT_TEMPLATE.html`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/review/REPORT_TEMPLATE.html)
-   and styled with [simple.css](https://simplecss.org/). Every violation links
-   to the line it is on and to the rule it breaks.
+   and styled with [simple.css](https://simplecss.org/). It works one module at
+   a time, so even a large review fits in one session. The page counts the
+   violations by rule, by module and by file, and every violation links to the
+   line it is on and to the rule it breaks.
 
-Nothing outside `style-review/` is ever written to, and no agent commits or
-changes a branch. A violation needs a line to quote and a numbered rule it
-breaks: where the guide leaves a case open, the review records an open
-question instead of guessing. If the run is cut off, start the master prompt
-again: it reads its log and carries on where it stopped.
+A module that turns out not to fit is never half-reviewed: the reviewer stops
+and says so, the master agent splits the module into smaller ones, and the
+parts go back in the queue. Nothing outside `style-review/` is ever written to,
+and no agent commits or changes a branch. A violation needs a line to quote and
+a numbered rule it breaks: where the guide leaves a case open, the review
+records an open question instead of guessing. If the run is cut off, start the
+master prompt again: it reads its log and carries on where it stopped.
 
 ### When it is done
 
 Open `style-review/REPORT.html` in a browser. The summary says which rules are
-broken most often and which files are worst. To fix what it found, give
+broken most often and which modules and files are worst. To fix what it found,
+give
 [`refactor/00_MASTER.md`](https://github.com/ChrisAraneo/functional-pipelines-style/blob/master/refactor/00_MASTER.md)
-the scope the report puts first.
+the module the report puts first.
 
 ## License & art attribution
 
